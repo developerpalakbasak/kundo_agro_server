@@ -6,7 +6,7 @@ import slugify from '../utils/slugify.js';
 import { removeUploadedFile } from '../middleware/upload.middleware.js';
 
 /**
- * Create a new Blog post
+ * Create a new Blog post (Admin / Staff / Manager)
  */
 export const createBlog = catchAsync(async (req, res) => {
     const { title, description, content, videoUrl: rawVideoUrl, tags: rawTags, isPublished } = req.body;
@@ -68,25 +68,25 @@ export const createBlog = catchAsync(async (req, res) => {
         videoUrl,
         tags,
         author: req.user?.id || null,
-        isPublished: isPublished === undefined ? true : isPublished === 'true' || isPublished === true
+        isPublished: isPublished === undefined ? true : isPublished === 'true' || isPublished === true,
     });
 
     res.status(201).json({
         success: true,
         message: `“${blog.title}” has been published.`,
-        data: blog
+        data: blog,
     });
 });
 
 /**
- * Get all Blogs with filtering, search, and pagination
+ * Get all Blogs with filtering, search, and pagination (Public / Customer / Admin)
  */
 export const getAllBlogs = catchAsync(async (req, res) => {
     const { tag, search, isPublished, page = 1, limit = 50, sort } = req.query;
 
     const filter = {};
 
-    if (tag) {
+    if (tag && tag !== 'all') {
         filter.tags = tag;
     }
 
@@ -98,7 +98,7 @@ export const getAllBlogs = catchAsync(async (req, res) => {
         filter.$or = [
             { title: { $regex: search, $options: 'i' } },
             { description: { $regex: search, $options: 'i' } },
-            { tags: { $regex: search, $options: 'i' } }
+            { tags: { $regex: search, $options: 'i' } },
         ];
     }
 
@@ -124,7 +124,18 @@ export const getAllBlogs = catchAsync(async (req, res) => {
         page: pageNum,
         totalPages: Math.ceil(total / limitNum),
         count: blogs.length,
-        data: blogs
+        data: blogs,
+    });
+});
+
+/**
+ * Get all distinct blog tags
+ */
+export const getBlogTags = catchAsync(async (req, res) => {
+    const tags = await Blog.distinct('tags');
+    res.status(200).json({
+        success: true,
+        tags: tags.filter(Boolean),
     });
 });
 
@@ -149,12 +160,12 @@ export const getBlogByIdOrSlug = catchAsync(async (req, res) => {
 
     res.status(200).json({
         success: true,
-        data: blog
+        data: blog,
     });
 });
 
 /**
- * Update Blog by ID
+ * Update Blog by ID (Admin / Staff / Manager)
  */
 export const updateBlog = catchAsync(async (req, res) => {
     const { id } = req.params;
@@ -223,12 +234,12 @@ export const updateBlog = catchAsync(async (req, res) => {
     res.status(200).json({
         success: true,
         message: 'Blog updated successfully',
-        data: blog
+        data: blog,
     });
 });
 
 /**
- * Delete Blog by ID
+ * Delete Blog by ID (Admin / Manager only)
  */
 export const deleteBlog = catchAsync(async (req, res) => {
     const { id } = req.params;
@@ -256,6 +267,6 @@ export const deleteBlog = catchAsync(async (req, res) => {
     res.status(200).json({
         success: true,
         message: 'Blog deleted successfully',
-        deletedId: id
+        deletedId: id,
     });
 });

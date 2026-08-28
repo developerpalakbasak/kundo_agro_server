@@ -9,7 +9,7 @@ export const generateAccessToken = (user) => {
         role: user.role
     };
     return jwt.sign(payload, process.env.JWT_SECRET, {
-        expiresIn: process.env.ACCESS_TOKEN_VALIDITY || '15m'
+        expiresIn: process.env.ACCESS_TOKEN_VALIDITY || '7d'
     });
 };
 

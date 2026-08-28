@@ -6,10 +6,35 @@ import slugify from '../utils/slugify.js';
 import { removeUploadedFile } from '../middleware/upload.middleware.js';
 
 /**
- * Create a new Product
+ * Standard Product Categories
+ */
+export const DEFAULT_PRODUCT_CATEGORIES = [
+    'Fish seed / মাছের পোনা',
+    'Fisheries medicine / chemical',
+    'Dairy medicine',
+    'Human food',
+    'Fish feed / raw materials',
+    'Dairy feed / raw materials',
+    'Import items',
+];
+
+/**
+ * Create a new Product (Admin / Staff / Manager)
  */
 export const createProduct = catchAsync(async (req, res) => {
-    const { name, description, category, unit, price, compareAtPrice, isAvailable, video } = req.body;
+    const {
+        name,
+        description,
+        category,
+        unit,
+        price,
+        compareAtPrice,
+        isAvailable,
+        video,
+        sellerName,
+        sellerDistrict,
+        sellerPhone,
+    } = req.body;
 
     if (!name || !name.trim()) {
         throw new AppError('Product name is required.', 400);
@@ -33,7 +58,7 @@ export const createProduct = catchAsync(async (req, res) => {
     }
 
     let numericComparePrice = null;
-    if (compareAtPrice !== undefined && compareAtPrice !== '' && compareAtPrice !== null) {
+    if (compareAtPrice !== undefined && compareAtPrice !== '' && compareAtPrice !== null && compareAtPrice !== 'null') {
         numericComparePrice = Number(compareAtPrice);
         if (Number.isNaN(numericComparePrice) || numericComparePrice <= 0) {
             throw new AppError('Old price (compareAtPrice) must be a number greater than 0.', 400);
@@ -74,25 +99,100 @@ export const createProduct = catchAsync(async (req, res) => {
         compareAtPrice: numericComparePrice,
         thumbnail,
         video: video ? video.trim() : null,
-        isAvailable: isAvailable === undefined ? true : isAvailable === 'true' || isAvailable === true
+        sellerName: sellerName ? sellerName.trim() : null,
+        sellerDistrict: sellerDistrict ? sellerDistrict.trim() : null,
+        sellerPhone: sellerPhone ? sellerPhone.trim() : null,
+        isAvailable: isAvailable === undefined ? true : isAvailable === 'true' || isAvailable === true,
     });
 
     res.status(201).json({
         success: true,
         message: `“${product.name}” has been added.`,
-        data: product
+        data: product,
     });
 });
 
 /**
- * Get all Products with filtering, search, and pagination
+ * Customer / Seller submission for Fish Seed product
+ */
+export const createFishSeedProduct = catchAsync(async (req, res) => {
+    const {
+        name,
+        description,
+        price,
+        unit = 'piece',
+        sellerName,
+        sellerDistrict,
+        sellerPhone,
+        imageUrl,
+    } = req.body;
+
+    if (!name || !name.trim()) {
+        throw new AppError('Product name is required / পণ্যের নাম আবশ্যক।', 400);
+    }
+    if (!sellerName || !sellerName.trim()) {
+        throw new AppError('Seller name is required / বিক্রেতার নাম আবশ্যক।', 400);
+    }
+    if (!sellerDistrict || !sellerDistrict.trim()) {
+        throw new AppError('Seller district is required / জেলা নির্বাচন করুন।', 400);
+    }
+    if (!sellerPhone || !sellerPhone.trim()) {
+        throw new AppError('Contact phone number is required / মোবাইল নম্বর আবশ্যক।', 400);
+    }
+
+    const numericPrice = Number(price);
+    if (!price || Number.isNaN(numericPrice) || numericPrice <= 0) {
+        throw new AppError('Please enter a valid price / সঠিক মূল্য লিখুন।', 400);
+    }
+
+    let thumbnail = 'https://images.unsplash.com/photo-1544551763-46a013bb70d5?auto=format&fit=crop&w=400&q=80';
+    if (req.file) {
+        thumbnail = `/uploads/products/${req.file.filename}`;
+    } else if (imageUrl && typeof imageUrl === 'string' && imageUrl.trim()) {
+        thumbnail = imageUrl.trim();
+    } else if (req.body.thumbnail && typeof req.body.thumbnail === 'string' && req.body.thumbnail.trim()) {
+        thumbnail = req.body.thumbnail.trim();
+    }
+
+    const baseSlug = slugify(name) || 'fish-seed';
+    let slug = baseSlug;
+    let suffix = 2;
+    while (await Product.exists({ slug })) {
+        slug = `${baseSlug}-${suffix}`;
+        suffix += 1;
+    }
+
+    const product = await Product.create({
+        name: name.trim(),
+        slug,
+        description: description ? description.trim() : `Quality fish seed supplied by ${sellerName} from ${sellerDistrict}.`,
+        category: 'Fish seed / মাছের পোনা',
+        unit: unit.trim(),
+        price: numericPrice,
+        compareAtPrice: null,
+        thumbnail,
+        sellerName: sellerName.trim(),
+        sellerDistrict: sellerDistrict.trim(),
+        sellerPhone: sellerPhone.trim(),
+        isAvailable: true,
+    });
+
+    res.status(201).json({
+        success: true,
+        message: 'Fish seed product posted successfully.',
+        data: product,
+    });
+});
+
+/**
+ * Get all Products with filtering, search, and pagination (Public / Customer / Admin)
  */
 export const getAllProducts = catchAsync(async (req, res) => {
     const { category, search, unit, minPrice, maxPrice, isAvailable, sort, page = 1, limit = 50 } = req.query;
 
     const filter = {};
 
-    if (category) {
+    if (category && category !== 'all') {
         filter.category = category;
     }
 
@@ -114,7 +214,9 @@ export const getAllProducts = catchAsync(async (req, res) => {
         filter.$or = [
             { name: { $regex: search, $options: 'i' } },
             { description: { $regex: search, $options: 'i' } },
-            { category: { $regex: search, $options: 'i' } }
+            { category: { $regex: search, $options: 'i' } },
+            { sellerName: { $regex: search, $options: 'i' } },
+            { sellerDistrict: { $regex: search, $options: 'i' } },
         ];
     }
 
@@ -142,7 +244,18 @@ export const getAllProducts = catchAsync(async (req, res) => {
         page: pageNum,
         totalPages: Math.ceil(total / limitNum),
         count: products.length,
-        data: products
+        data: products,
+    });
+});
+
+/**
+ * Get distinct categories of products
+ */
+export const getProductCategories = catchAsync(async (req, res) => {
+    const categories = await Product.distinct('category');
+    res.status(200).json({
+        success: true,
+        categories: categories.length > 0 ? categories : DEFAULT_PRODUCT_CATEGORIES,
     });
 });
 
@@ -167,12 +280,12 @@ export const getProductByIdOrSlug = catchAsync(async (req, res) => {
 
     res.status(200).json({
         success: true,
-        data: product
+        data: product,
     });
 });
 
 /**
- * Update Product by ID (Supports multipart image upload and text fields)
+ * Update Product by ID (Admin / Staff / Manager)
  */
 export const updateProduct = catchAsync(async (req, res) => {
     const { id } = req.params;
@@ -189,7 +302,19 @@ export const updateProduct = catchAsync(async (req, res) => {
         throw new AppError('This product no longer exists.', 404);
     }
 
-    const { name, description, category, unit, price, compareAtPrice, isAvailable, video } = req.body;
+    const {
+        name,
+        description,
+        category,
+        unit,
+        price,
+        compareAtPrice,
+        isAvailable,
+        video,
+        sellerName,
+        sellerDistrict,
+        sellerPhone,
+    } = req.body;
 
     // If new thumbnail uploaded, replace and delete old file
     if (req.file) {
@@ -217,6 +342,10 @@ export const updateProduct = catchAsync(async (req, res) => {
     if (category !== undefined) product.category = category.trim();
     if (unit !== undefined) product.unit = unit.trim();
     if (video !== undefined) product.video = video ? video.trim() : null;
+    if (sellerName !== undefined) product.sellerName = sellerName ? sellerName.trim() : null;
+    if (sellerDistrict !== undefined) product.sellerDistrict = sellerDistrict ? sellerDistrict.trim() : null;
+    if (sellerPhone !== undefined) product.sellerPhone = sellerPhone ? sellerPhone.trim() : null;
+
     if (isAvailable !== undefined) {
         product.isAvailable = isAvailable === 'true' || isAvailable === true;
     }
@@ -249,12 +378,12 @@ export const updateProduct = catchAsync(async (req, res) => {
     res.status(200).json({
         success: true,
         message: 'Product updated successfully',
-        data: product
+        data: product,
     });
 });
 
 /**
- * Delete Product by ID
+ * Delete Product by ID (Admin / Manager only)
  */
 export const deleteProduct = catchAsync(async (req, res) => {
     const { id } = req.params;
@@ -279,6 +408,6 @@ export const deleteProduct = catchAsync(async (req, res) => {
     res.status(200).json({
         success: true,
         message: 'Product deleted successfully',
-        deletedId: id
+        deletedId: id,
     });
 });

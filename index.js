@@ -7,11 +7,15 @@ import fs from 'fs';
 import path from 'path';
 import errorHandler from './middleware/errorHandler.js';
 import cookieParser from 'cookie-parser';
+
+// Routes
 import authRoutes from './routes/auth.route.js';
 import userRoutes from './routes/user.route.js';
 import productRoutes from './routes/product.route.js';
 import blogRoutes from './routes/blog.route.js';
-import dashboardRoutes from './routes/dashboard.route.js';
+import orderRoutes from './routes/order.route.js';
+import adminRoutes from './routes/admin/index.js';
+import adminUserRoutes from './routes/admin/user.route.js';
 
 // Load environment variables
 console.log(`📂 Current Working Directory: ${process.cwd()}`);
@@ -53,26 +57,35 @@ app.use(morgan('dev'));
 // Static uploads serving for uploaded thumbnails and videos
 app.use('/uploads', express.static(path.join(process.cwd(), 'uploads')));
 
+// Health Check API
 app.get('/api/v1', (req, res) => res.status(200).json({
     success: true,
-    message: 'Api is LIVE'
+    message: 'Kundu Agro & Fisheries API is LIVE',
+    timestamp: new Date().toISOString(),
 }));
 
 // Mount Routes
+// 1. Auth & Session Routes
 app.use('/api/v1/auth', authRoutes);
-app.use('/api/v1/users', userRoutes);
+
+// 2. Customer / Authenticated User Routes
+app.use('/api/v1/user', userRoutes);
+
+// 3. Public & Customer Common Routes
 app.use('/api/v1/products', productRoutes);
 app.use('/api/v1/blogs', blogRoutes);
-app.use('/api/v1/admin', dashboardRoutes);
+app.use('/api/v1/orders', orderRoutes);
 
+// 4. Dedicated Admin / Manager / Staff Routes
+app.use('/api/v1/admin', adminRoutes);
 
+// 5. Backward Compatibility Aliases
+app.use('/api/v1/users', adminUserRoutes);
 
-
-
-//errorhandler
+// Error Handler Middleware
 app.use(errorHandler);
 
-// create db connection 
+// Create DB connection and start server
 const startServer = async () => {
     try {
         await connectDB();

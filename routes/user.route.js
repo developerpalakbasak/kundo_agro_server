@@ -1,25 +1,32 @@
 import express from 'express';
 import {
-    getAllUsers,
-    getUserById,
-    registerUser,
-    updateUser,
-    deleteUser,
-    changeUserPasswordByAdmin
+    aboutMe,
+    updateMyProfile,
+    changeAdminPassword,
 } from '../controllers/user.controller.js';
-import { isAuthenticated, isAdmin } from '../middleware/auth.middleware.js';
+import {
+    getMyOrders,
+    getOrderByIdOrTracking,
+} from '../controllers/order.controller.js';
+import {
+    createFishSeedProduct,
+} from '../controllers/product.controller.js';
+import { isAuthenticated, optionalAuth } from '../middleware/auth.middleware.js';
+import { uploadProductThumbnail } from '../middleware/upload.middleware.js';
 
 const router = express.Router();
 
-// All user management routes require admin privileges
-router.use(isAuthenticated, isAdmin);
+// Customer Profile Routes (Authenticated)
+router.get('/profile', isAuthenticated, aboutMe);
+router.put('/profile', isAuthenticated, updateMyProfile);
+router.patch('/profile', isAuthenticated, updateMyProfile);
+router.put('/change-password', isAuthenticated, changeAdminPassword);
 
-router.get('/', getAllUsers);
-router.get('/:id', getUserById);
-router.post('/', registerUser);
-router.put('/:id', updateUser);
-router.patch('/:id', updateUser);
-router.delete('/:id', deleteUser);
-router.post('/:id/change-password', changeUserPasswordByAdmin);
+// Customer Order History (Authenticated)
+router.get('/orders', isAuthenticated, getMyOrders);
+router.get('/orders/:id', isAuthenticated, getOrderByIdOrTracking);
+
+// Customer / Seller Fish-seed Listing Submission
+router.post('/products/fish-seed', optionalAuth, uploadProductThumbnail, createFishSeedProduct);
 
 export default router;

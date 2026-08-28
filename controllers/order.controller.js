@@ -1,0 +1,298 @@
+import mongoose from 'mongoose';
+import Order from '../model/order.model.js';
+import AppError from '../utils/appError.js';
+import catchAsync from '../utils/catchAsync.js';
+
+/**
+ * Generate a unique human-friendly Order ID (e.g. ORD-2026-8841)
+ */
+const generateOrderId = async () => {
+    const year = new Date().getFullYear();
+    let orderId = '';
+    let exists = true;
+    while (exists) {
+        const randomNum = Math.floor(1000 + Math.random() * 9000);
+        orderId = `ORD-${year}-${randomNum}`;
+        exists = await Order.exists({ orderId });
+    }
+    return orderId;
+};
+
+/**
+ * Place a new Order (Public / Customer Checkout)
+ */
+export const createOrder = catchAsync(async (req, res) => {
+    const {
+        customerName,
+        phone,
+        address,
+        city,
+        notes,
+        paymentMethod,
+        items,
+        deliveryFee = 0,
+    } = req.body;
+
+    if (!customerName || !customerName.trim()) {
+        throw new AppError('Customer full name is required.', 400);
+    }
+    if (!phone || !phone.trim()) {
+        throw new AppError('Contact phone number is required.', 400);
+    }
+    if (!address || !address.trim()) {
+        throw new AppError('Shipping address is required.', 400);
+    }
+    if (!city || !city.trim()) {
+        throw new AppError('District / City is required.', 400);
+    }
+    if (!Array.isArray(items) || items.length === 0) {
+        throw new AppError('Order must contain at least one item.', 400);
+    }
+
+    // Format & validate each item
+    const formattedItems = [];
+    let calculatedSubtotal = 0;
+
+    for (const item of items) {
+        if (!item.name || !item.name.trim()) {
+            throw new AppError('Each item must have a valid name.', 400);
+        }
+        const itemPrice = Number(item.price);
+        const itemQty = Number(item.quantity) || 1;
+
+        if (Number.isNaN(itemPrice) || itemPrice < 0) {
+            throw new AppError(`Invalid price for item: ${item.name}`, 400);
+        }
+        if (Number.isNaN(itemQty) || itemQty <= 0) {
+            throw new AppError(`Invalid quantity for item: ${item.name}`, 400);
+        }
+
+        const lineTotal = itemPrice * itemQty;
+        calculatedSubtotal += lineTotal;
+
+        formattedItems.push({
+            product: item.product && mongoose.Types.ObjectId.isValid(item.product) ? item.product : null,
+            name: item.name.trim(),
+            thumbnail: item.thumbnail || 'https://images.unsplash.com/photo-1544551763-46a013bb70d5?auto=format&fit=crop&w=400&q=80',
+            price: itemPrice,
+            quantity: itemQty,
+            unit: item.unit ? item.unit.trim() : 'piece',
+        });
+    }
+
+    const numericDeliveryFee = Number(deliveryFee) || 0;
+    const finalTotal = calculatedSubtotal + numericDeliveryFee;
+    const orderId = await generateOrderId();
+
+    const order = await Order.create({
+        orderId,
+        customer: req.user?.id || null,
+        customerName: customerName.trim(),
+        phone: phone.trim(),
+        address: address.trim(),
+        city: city.trim(),
+        notes: notes ? notes.trim() : '',
+        paymentMethod: paymentMethod ? paymentMethod.trim() : 'Cash on Delivery',
+        paymentStatus: 'pending',
+        status: 'processing',
+        items: formattedItems,
+        subtotal: calculatedSubtotal,
+        deliveryFee: numericDeliveryFee,
+        total: finalTotal,
+        date: new Date().toISOString().split('T')[0],
+    });
+
+    res.status(201).json({
+        success: true,
+        message: 'Order placed successfully.',
+        order,
+    });
+});
+
+/**
+ * Get orders placed by current authenticated Customer
+ */
+export const getMyOrders = catchAsync(async (req, res) => {
+    const filter = {
+        $or: [
+            { customer: req.user.id },
+            { phone: req.user.phone && req.user.phone.trim() ? req.user.phone : '__none__' }
+        ]
+    };
+
+    const orders = await Order.find(filter).sort({ createdAt: -1 });
+
+    res.status(200).json({
+        success: true,
+        count: orders.length,
+        orders,
+    });
+});
+
+/**
+ * Get single order details by Order ID or MongoDB _id (Public / Customer tracking)
+ */
+export const getOrderByIdOrTracking = catchAsync(async (req, res) => {
+    const { id } = req.params;
+
+    let order = null;
+    if (mongoose.Types.ObjectId.isValid(id)) {
+        order = await Order.findById(id);
+    }
+    if (!order) {
+        order = await Order.findOne({ orderId: id.toUpperCase().trim() });
+    }
+
+    if (!order) {
+        throw new AppError('Order not found.', 404);
+    }
+
+    res.status(200).json({
+        success: true,
+        order,
+    });
+});
+
+/**
+ * Get all Orders (Admin / Manager / Staff) with search, filter, and pagination
+ */
+export const getAllOrdersAdmin = catchAsync(async (req, res) => {
+    const { status, paymentStatus, search, page = 1, limit = 50, sort } = req.query;
+
+    const filter = {};
+    if (status && status !== 'all') {
+        filter.status = status;
+    }
+    if (paymentStatus) {
+        filter.paymentStatus = paymentStatus;
+    }
+    if (search) {
+        filter.$or = [
+            { orderId: { $regex: search, $options: 'i' } },
+            { customerName: { $regex: search, $options: 'i' } },
+            { phone: { $regex: search, $options: 'i' } },
+            { city: { $regex: search, $options: 'i' } },
+        ];
+    }
+
+    const pageNum = Math.max(1, parseInt(page, 10) || 1);
+    const limitNum = Math.max(1, parseInt(limit, 10) || 50);
+    const skip = (pageNum - 1) * limitNum;
+
+    let sortOption = { createdAt: -1 };
+    if (sort === 'oldest') sortOption = { createdAt: 1 };
+    else if (sort === 'total_desc') sortOption = { total: -1 };
+    else if (sort === 'total_asc') sortOption = { total: 1 };
+
+    const total = await Order.countDocuments(filter);
+    const orders = await Order.find(filter)
+        .sort(sortOption)
+        .skip(skip)
+        .limit(limitNum);
+
+    res.status(200).json({
+        success: true,
+        total,
+        page: pageNum,
+        totalPages: Math.ceil(total / limitNum),
+        count: orders.length,
+        orders,
+    });
+});
+
+/**
+ * Get single Order details (Admin / Manager / Staff)
+ */
+export const getAdminOrderById = catchAsync(async (req, res) => {
+    const { id } = req.params;
+
+    let order = null;
+    if (mongoose.Types.ObjectId.isValid(id)) {
+        order = await Order.findById(id).populate('customer', 'name email phone role');
+    }
+    if (!order) {
+        order = await Order.findOne({ orderId: id.toUpperCase().trim() }).populate('customer', 'name email phone role');
+    }
+
+    if (!order) {
+        throw new AppError('Order not found.', 404);
+    }
+
+    res.status(200).json({
+        success: true,
+        order,
+    });
+});
+
+/**
+ * Update Order status / payment status (Staff / Manager / Admin)
+ */
+export const updateOrderStatus = catchAsync(async (req, res) => {
+    const { id } = req.params;
+    const { status, paymentStatus, notes } = req.body;
+
+    let order = null;
+    if (mongoose.Types.ObjectId.isValid(id)) {
+        order = await Order.findById(id);
+    }
+    if (!order) {
+        order = await Order.findOne({ orderId: id.toUpperCase().trim() });
+    }
+
+    if (!order) {
+        throw new AppError('Order not found.', 404);
+    }
+
+    if (status) {
+        const validStatuses = ['processing', 'shipped', 'delivered', 'cancelled'];
+        if (!validStatuses.includes(status)) {
+            throw new AppError(`Invalid order status. Allowed: ${validStatuses.join(', ')}`, 400);
+        }
+        order.status = status;
+    }
+
+    if (paymentStatus) {
+        const validPaymentStatuses = ['pending', 'paid', 'failed'];
+        if (!validPaymentStatuses.includes(paymentStatus)) {
+            throw new AppError(`Invalid payment status. Allowed: ${validPaymentStatuses.join(', ')}`, 400);
+        }
+        order.paymentStatus = paymentStatus;
+    }
+
+    if (notes !== undefined) {
+        order.notes = notes.trim();
+    }
+
+    await order.save();
+
+    res.status(200).json({
+        success: true,
+        message: 'Order status updated successfully.',
+        order,
+    });
+});
+
+/**
+ * Delete an Order (Admin / Manager only)
+ */
+export const deleteOrder = catchAsync(async (req, res) => {
+    const { id } = req.params;
+
+    let order = null;
+    if (mongoose.Types.ObjectId.isValid(id)) {
+        order = await Order.findByIdAndDelete(id);
+    }
+    if (!order) {
+        order = await Order.findOneAndDelete({ orderId: id.toUpperCase().trim() });
+    }
+
+    if (!order) {
+        throw new AppError('Order not found.', 404);
+    }
+
+    res.status(200).json({
+        success: true,
+        message: 'Order deleted successfully.',
+        deletedId: id,
+    });
+});

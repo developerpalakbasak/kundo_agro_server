@@ -1,20 +1,15 @@
-// export const successResponse = (res, data, message = 'Success', statusCode = 200) => {
-//     return res.status(statusCode).json({
-//         success: true,
-//         message,
-//         data
-//     });
-// };
-
-export const setAuthCookies = (req, res, accessToken, refreshToken, message = 'Success', statusCode = 200, redirect = null) => {
-    const accessMaxAge = parseInt(process.env.ACCESS_COOKIES_VALIDITY, 10) || 15;
-    const refreshMaxAge = parseInt(process.env.REFRESH_COOKIES_VALIDITY, 10) || 7;
-
-    // const baseOptions = {
-    //     httpOnly: true,
-    //     secure: process.env.NODE_ENV === 'production',
-    //     sameSite: 'lax', // or 'strict' depending on your needs
-    // };
+export const setAuthCookies = (
+    req,
+    res,
+    accessToken,
+    refreshToken,
+    message = 'Success',
+    statusCode = 200,
+    redirect = null,
+    user = null
+) => {
+    const accessMaxAge = parseInt(process.env.ACCESS_COOKIES_VALIDITY, 10) || (7 * 24 * 60); // 7 days in minutes
+    const refreshMaxAge = parseInt(process.env.REFRESH_COOKIES_VALIDITY, 10) || 30; // 30 days
 
     const baseOptions = {
         httpOnly: true,
@@ -25,7 +20,6 @@ export const setAuthCookies = (req, res, accessToken, refreshToken, message = 'S
     res.cookie('accessToken', accessToken, {
         ...baseOptions,
         maxAge: accessMaxAge * 60 * 1000, // minutes
-        // path: '/', // default
     });
 
     res.cookie('refreshToken', refreshToken, {
@@ -36,7 +30,21 @@ export const setAuthCookies = (req, res, accessToken, refreshToken, message = 'S
     const responseData = {
         success: true,
         message,
+        token: accessToken,
+        accessToken,
     };
+
+    if (user) {
+        responseData.user = {
+            id: user._id ? user._id.toString() : user.id,
+            name: user.name,
+            email: user.email,
+            role: user.role,
+            status: user.status,
+            phone: user.phone || '',
+            avatar: user.avatar || null,
+        };
+    }
 
     if (redirect) {
         responseData.redirect = redirect;
@@ -45,9 +53,8 @@ export const setAuthCookies = (req, res, accessToken, refreshToken, message = 'S
     return res.status(statusCode).json(responseData);
 };
 
-
 export const setAccessCookies = (res, accessToken, next) => {
-    const accessMaxAge = parseInt(process.env.ACCESS_COOKIES_VALIDITY, 10) || 15;
+    const accessMaxAge = parseInt(process.env.ACCESS_COOKIES_VALIDITY, 10) || (7 * 24 * 60); // 7 days in minutes
 
     res.cookie('accessToken', accessToken, {
         httpOnly: true,
@@ -59,22 +66,18 @@ export const setAccessCookies = (res, accessToken, next) => {
 };
 
 export const clearCookie = (res, message = 'Logged out successfully', statusCode = 200) => {
-    // Clear cookie by setting it with an expired date
-    res.cookie('accessToken', '', {
+    const baseOptions = {
         httpOnly: true,
         secure: process.env.NODE_ENV === 'production',
         sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
-        expires: new Date(0) // Set expiration to the past
-    });
-    res.cookie('refreshToken', '', {
-        httpOnly: true,
-        secure: process.env.NODE_ENV === 'production',
-        sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
-        expires: new Date(0) // Set expiration to the past
-    });
+        expires: new Date(0),
+    };
+
+    res.cookie('accessToken', '', baseOptions);
+    res.cookie('refreshToken', '', baseOptions);
 
     return res.status(statusCode).json({
         success: true,
-        message
+        message,
     });
 };

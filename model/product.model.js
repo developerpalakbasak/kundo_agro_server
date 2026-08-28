@@ -29,10 +29,7 @@ const productSchema = new Schema(
     unit: {
       type: String,
       required: [true, "Unit is required"],
-      enum: {
-        values: ["kg", "gram", "litre", "piece", "dozen", "pack"],
-        message: "{VALUE} is not a valid unit",
-      },
+      trim: true,
       default: "kg",
     },
     price: {
@@ -46,7 +43,8 @@ const productSchema = new Schema(
       validate: {
         validator: function (val) {
           if (val == null) return true;
-          return val > this.price;
+          if (this.price != null) return val > this.price;
+          return true;
         },
         message: "Old price (compareAtPrice) must be higher than current price",
       },
@@ -61,6 +59,21 @@ const productSchema = new Schema(
       default: [],
     },
     video: {
+      type: String,
+      default: null,
+      trim: true,
+    },
+    sellerName: {
+      type: String,
+      default: null,
+      trim: true,
+    },
+    sellerDistrict: {
+      type: String,
+      default: null,
+      trim: true,
+    },
+    sellerPhone: {
       type: String,
       default: null,
       trim: true,

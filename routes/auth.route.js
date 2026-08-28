@@ -1,34 +1,32 @@
 import express from 'express';
-import { 
-    registerUser, 
-    changeUserPasswordByAdmin, 
-    changeAdminPassword, 
-    login, 
-    logout, 
-    aboutMe, 
-    getAllUsers, 
-    updateUser, 
-    deleteUser,
+import {
+    registerUser,
+    login,
+    logout,
+    aboutMe,
     verifyUser,
-    getUserById
+    refreshSession,
+    changeAdminPassword,
 } from '../controllers/user.controller.js';
-import { isAuthenticated, isAdmin } from '../middleware/auth.middleware.js';
+import { isAuthenticated, optionalAuth } from '../middleware/auth.middleware.js';
 
 const router = express.Router();
 
-// Defined under /api/v1/auth ...
-router.post('/user/register', registerUser);
-router.post('/user/changepassword', isAuthenticated, isAdmin, changeUserPasswordByAdmin);
-router.post('/admin/changepassword', isAuthenticated, isAdmin, changeAdminPassword);
+// Public auth endpoints
+router.post('/register', optionalAuth, registerUser);
+router.post('/user/register', optionalAuth, registerUser); // legacy alias
 router.post('/login', login);
-router.get('/logout', isAuthenticated, logout);
-router.get('/verify', isAuthenticated, verifyUser);
-router.get('/me', isAuthenticated, aboutMe);
+router.get('/logout', logout);
+router.post('/logout', logout);
+router.post('/refresh', refreshSession);
+router.get('/refresh', refreshSession);
+router.post('/refresh-token', refreshSession);
 
-// Added User Management Routes
-router.get('/users', isAuthenticated, isAdmin, getAllUsers);
-router.get('/user/:id', isAuthenticated, isAdmin, getUserById);
-router.patch('/user/:id', isAuthenticated, isAdmin, updateUser);
-router.delete('/user/:id', isAuthenticated, isAdmin, deleteUser);
+// Authenticated session & profile endpoints
+router.get('/me', isAuthenticated, aboutMe);
+router.get('/verify', isAuthenticated, verifyUser);
+router.post('/changepassword', isAuthenticated, changeAdminPassword);
+router.put('/changepassword', isAuthenticated, changeAdminPassword);
+router.post('/admin/changepassword', isAuthenticated, changeAdminPassword); // legacy alias
 
 export default router;
