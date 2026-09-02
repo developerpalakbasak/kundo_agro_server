@@ -9,7 +9,7 @@ import User from '../model/user.model.js';
  * If accessToken is expired but a valid refreshToken exists, automatically refreshes the session.
  */
 export const isAuthenticated = catchAsync(async (req, res, next) => {
-    let token = req.cookies?.accessToken || req.cookies?.token;
+    let token = req.cookies?.accessToken || req.cookies?.token || req.cookies?.customerAccessToken;
 
     if (!token && req.headers.authorization && req.headers.authorization.startsWith('Bearer')) {
         token = req.headers.authorization.split(' ')[1];
@@ -95,7 +95,7 @@ export const isAuthenticated = catchAsync(async (req, res, next) => {
  * Optional authentication: Attaches req.user if a valid token exists, but does not error if guest
  */
 export const optionalAuth = catchAsync(async (req, res, next) => {
-    let token = req.cookies?.accessToken || req.cookies?.token;
+    let token = req.cookies?.accessToken || req.cookies?.token || req.cookies?.customerAccessToken;
 
     if (!token && req.headers.authorization && req.headers.authorization.startsWith('Bearer')) {
         token = req.headers.authorization.split(' ')[1];

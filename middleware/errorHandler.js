@@ -1,7 +1,4 @@
-// middleware/errorHandler.js
 const errorHandler = (err, req, res, next) => {
-    console.error('🔥 Error:', err); // Log for debugging
-
     // Default error
     let statusCode = 500;
     let message = 'Internal Server Error';
@@ -50,6 +47,10 @@ const errorHandler = (err, req, res, next) => {
         res.clearCookie('refreshToken');
     }
     */
+
+    if (statusCode >= 500) {
+        console.error('🔥 Server Error (500):', err);
+    }
 
     // Send response
     res.status(statusCode).json({
