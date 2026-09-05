@@ -32,6 +32,7 @@ export const setAuthCookies = (
         message,
         token: accessToken,
         accessToken,
+        refreshToken,
     };
 
     if (user) {
@@ -75,6 +76,7 @@ export const clearCookie = (res, message = 'Logged out successfully', statusCode
 
     res.cookie('accessToken', '', baseOptions);
     res.cookie('refreshToken', '', baseOptions);
+    res.cookie('customerAccessToken', '', baseOptions);
 
     return res.status(statusCode).json({
         success: true,
