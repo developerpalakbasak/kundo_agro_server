@@ -2,6 +2,7 @@ import mongoose from 'mongoose';
 import Order from '../model/order.model.js';
 import AppError from '../utils/appError.js';
 import catchAsync from '../utils/catchAsync.js';
+import SSLCommerzPayment from 'sslcommerz-lts';
 
 /**
  * Generate a unique human-friendly Order ID (e.g. ORD-2026-8841)
@@ -296,3 +297,138 @@ export const deleteOrder = catchAsync(async (req, res) => {
         deletedId: id,
     });
 });
+
+/**
+ * SSLCommerz: Initialize Payment Gateway Redirect
+ */
+export const initSSLCommerzPayment = catchAsync(async (req, res) => {
+    const { orderId } = req.params;
+
+    const order = await Order.findOne({ orderId: orderId.trim() });
+    if (!order) {
+        throw new AppError('Order not found.', 404);
+    }
+
+    const store_id = process.env.STORE_ID || 'testbox';
+    const store_passwd = process.env.STORE_PASSWORD || 'qwerty';
+    const is_live = process.env.IS_LIVE === 'true';
+
+    const data = {
+        total_amount: order.total,
+        currency: 'BDT',
+        tran_id: order.orderId,
+        success_url: process.env.SSL_SUCCESS_URL || `http://localhost:4000/api/v1/orders/payment/success`,
+        fail_url: process.env.SSL_FAIL_URL || `http://localhost:4000/api/v1/orders/payment/fail`,
+        cancel_url: process.env.SSL_CANCEL_URL || `http://localhost:4000/api/v1/orders/payment/cancel`,
+        ipn_url: process.env.SSL_IPN_URL || `http://localhost:4000/api/v1/orders/payment/ipn`,
+        shipping_method: 'Courier',
+        product_name: order.items.map(i => i.name).join(', ') || 'Agro Products',
+        product_category: 'Agro & Fisheries',
+        product_profile: 'general',
+        cus_name: order.customerName,
+        cus_email: 'customer@kunduagro.com',
+        cus_add1: order.address,
+        cus_city: order.city,
+        cus_postcode: '1000',
+        cus_country: 'Bangladesh',
+        cus_phone: order.phone,
+        ship_name: order.customerName,
+        ship_add1: order.address,
+        ship_city: order.city,
+        ship_postcode: 1000,
+        ship_country: 'Bangladesh',
+    };
+
+    try {
+        const SSLFactory = SSLCommerzPayment.SSLCommerzPayment || SSLCommerzPayment.default || SSLCommerzPayment;
+        const sslcz = new SSLFactory(store_id, store_passwd, is_live);
+        const apiResponse = await sslcz.init(data);
+
+        console.log('SSLCommerz Init API Response:', apiResponse);
+
+        if (apiResponse?.GatewayPageURL) {
+            return res.status(200).json({
+                success: true,
+                gatewayUrl: apiResponse.GatewayPageURL,
+            });
+        }
+        
+        return res.status(400).json({
+            success: false,
+            message: apiResponse?.failedreason || 'SSLCommerz gateway session failed to initialize.',
+        });
+    } catch (err) {
+        console.error('SSLCommerz Initialization Exception:', err);
+        return res.status(500).json({
+            success: false,
+            message: err.message || 'SSLCommerz payment service error.',
+        });
+    }
+});
+
+/**
+ * SSLCommerz: Success Callback (POST from SSLCommerz server)
+ */
+export const handleSSLCommerzSuccess = catchAsync(async (req, res) => {
+    const { tran_id, val_id } = req.body;
+
+    const store_id = process.env.STORE_ID || 'testbox';
+    const store_passwd = process.env.STORE_PASSWORD || 'qwerty';
+    const is_live = process.env.IS_LIVE === 'true';
+
+    const order = await Order.findOne({ orderId: tran_id });
+    if (!order) {
+        return res.redirect(`${process.env.FRONTEND_URL || 'http://localhost:3000'}/orders?payment=failed&reason=ordernotfound`);
+    }
+
+    // Validate payment with SSLCommerz
+    const SSLFactory = SSLCommerzPayment.SSLCommerzPayment || SSLCommerzPayment.default || SSLCommerzPayment;
+    const sslcz = new SSLFactory(store_id, store_passwd, is_live);
+    const validationData = { val_id };
+    const validationRes = await sslcz.validate(validationData);
+
+    if (validationRes?.status === 'VALID' || validationRes?.status === 'VALIDATED') {
+        order.paymentStatus = 'paid';
+        order.status = 'processing';
+        await order.save();
+        return res.redirect(`${process.env.FRONTEND_URL || 'http://localhost:3000'}/orders?placed=${order.orderId}&payment=success`);
+    } else {
+        order.paymentStatus = 'failed';
+        await order.save();
+        return res.redirect(`${process.env.FRONTEND_URL || 'http://localhost:3000'}/orders?placed=${order.orderId}&payment=failed`);
+    }
+});
+
+/**
+ * SSLCommerz: Fail Callback
+ */
+export const handleSSLCommerzFail = catchAsync(async (req, res) => {
+    const { tran_id } = req.body;
+    if (tran_id) {
+        await Order.findOneAndUpdate({ orderId: tran_id }, { paymentStatus: 'failed' });
+    }
+    return res.redirect(`${process.env.FRONTEND_URL || 'http://localhost:3000'}/orders?payment=failed`);
+});
+
+/**
+ * SSLCommerz: Cancel Callback
+ */
+export const handleSSLCommerzCancel = catchAsync(async (req, res) => {
+    const { tran_id } = req.body;
+    if (tran_id) {
+        await Order.findOneAndUpdate({ orderId: tran_id }, { paymentStatus: 'failed' });
+    }
+    return res.redirect(`${process.env.FRONTEND_URL || 'http://localhost:3000'}/orders?payment=cancelled`);
+});
+
+/**
+ * SSLCommerz: IPN Notification Handler
+ */
+export const handleSSLCommerzIPN = catchAsync(async (req, res) => {
+    const { tran_id, status } = req.body;
+    if (tran_id && (status === 'VALID' || status === 'VALIDATED')) {
+        await Order.findOneAndUpdate({ orderId: tran_id }, { paymentStatus: 'paid', status: 'processing' });
+    }
+    res.status(200).send('IPN Received');
+});
+
