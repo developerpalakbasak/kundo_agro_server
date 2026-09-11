@@ -20,6 +20,9 @@ import orderRoutes from './routes/order.route.js';
 import adminRoutes from './routes/admin/index.js';
 import adminUserRoutes from './routes/admin/user.route.js';
 
+// demo routes
+import demoRoutes from "./demo/demoRoutes.js";
+
 // Load environment variables
 console.log(`📂 Current Working Directory: ${process.cwd()}`);
 const envPath = path.join(process.cwd(), '.env');
@@ -41,6 +44,7 @@ app.use(cors({
         const allowedOrigins = [
             process.env.FRONTEND_URL,
             'http://localhost:3000',
+            'http://localhost:8080',
             'http://127.0.0.1:3000'
         ];
         // Allow requests with no origin (like Next.js server-side fetches) or explicitly allowed origins
@@ -70,6 +74,9 @@ app.get('/api/v1', (req, res) => res.status(200).json({
 // Mount Routes
 // 1. Auth & Session Routes
 app.use('/api/v1/auth', authRoutes);
+
+// demo data routes
+app.use("/api/v1/demo", demoRoutes)
 
 // 2. Public Catalog & Order Common Routes (Guests & Everyone)
 app.use('/api/v1/products', productRoutes);

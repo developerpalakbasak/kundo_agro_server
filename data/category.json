@@ -1,0 +1,23 @@
+[
+    {
+        "name": "Category Name",
+        "slug": "category-name",
+        "description": "Category Description",
+        "product_count": 0,
+        "subcategories": []
+    },
+    {
+        "name": "from browser",
+        "slug": "from-browser",
+        "description": "",
+        "product_count": 0,
+        "subcategories": []
+    },
+    {
+        "name": "from browser asdf",
+        "slug": "from-browser-asdf",
+        "description": "",
+        "product_count": 0,
+        "subcategories": []
+    }
+]

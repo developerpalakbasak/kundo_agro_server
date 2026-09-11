@@ -1,9 +1,50 @@
+import { readFileSync } from 'fs';
+import { fileURLToPath } from 'url';
+import { dirname, join } from 'path';
 import mongoose from 'mongoose';
 import Product from '../model/product.model.js';
 import AppError from '../utils/appError.js';
 import catchAsync from '../utils/catchAsync.js';
 import slugify from '../utils/slugify.js';
 import { removeUploadedFile } from '../middleware/upload.middleware.js';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
+const DISTRICTS_FILE = join(__dirname, '../data/bangladesh_districts.json');
+const UNITS_FILE = join(__dirname, '../data/product_units.json');
+
+const readJSONFile = (filePath) => {
+    try {
+        const raw = readFileSync(filePath, 'utf-8');
+        return JSON.parse(raw);
+    } catch {
+        return [];
+    }
+};
+
+/**
+ * Get all Bangladesh districts (from bangladesh_districts.json)
+ */
+export const getAllDistricts = catchAsync(async (req, res) => {
+    const districts = readJSONFile(DISTRICTS_FILE);
+    res.status(200).json({
+        success: true,
+        count: districts.length,
+        districts,
+    });
+});
+
+/**
+ * Get all Product Units (from product_units.json)
+ */
+export const getAllUnits = catchAsync(async (req, res) => {
+    const units = readJSONFile(UNITS_FILE);
+    res.status(200).json({
+        success: true,
+        count: units.length,
+        units,
+    });
+});
 
 /**
  * Standard Product Categories
@@ -248,16 +289,6 @@ export const getAllProducts = catchAsync(async (req, res) => {
     });
 });
 
-/**
- * Get distinct categories of products
- */
-export const getProductCategories = catchAsync(async (req, res) => {
-    const categories = await Product.distinct('category');
-    res.status(200).json({
-        success: true,
-        categories: categories.length > 0 ? categories : DEFAULT_PRODUCT_CATEGORIES,
-    });
-});
 
 /**
  * Get single Product by ID or Slug

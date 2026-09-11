@@ -43,7 +43,9 @@ const productSchema = new Schema(
       validate: {
         validator: function (val) {
           if (val == null) return true;
-          if (this.price != null) return val > this.price;
+          // Use this.get('price') or fallback to object property check
+          const currentPrice = this.get ? this.get('price') : this.price;
+          if (currentPrice != null) return val > currentPrice;
           return true;
         },
         message: "Old price (compareAtPrice) must be higher than current price",
