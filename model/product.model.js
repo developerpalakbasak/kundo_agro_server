@@ -65,17 +65,12 @@ const productSchema = new Schema(
       default: null,
       trim: true,
     },
-    sellerName: {
-      type: String,
+    seller: {
+      type: Schema.Types.ObjectId,
+      ref: "User",
       default: null,
-      trim: true,
     },
-    sellerDistrict: {
-      type: String,
-      default: null,
-      trim: true,
-    },
-    sellerPhone: {
+    location: {
       type: String,
       default: null,
       trim: true,

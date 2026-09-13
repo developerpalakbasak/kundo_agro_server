@@ -81,6 +81,7 @@ export const isAuthenticated = catchAsync(async (req, res, next) => {
     }
 
     req.user = {
+        _id: user._id,
         id: user._id.toString(),
         name: user.name,
         email: user.email,
@@ -109,6 +110,7 @@ export const optionalAuth = catchAsync(async (req, res, next) => {
             const user = await User.findById(decoded.id);
             if (user && user.status !== 'Inactive') {
                 req.user = {
+                    _id: user._id,
                     id: user._id.toString(),
                     name: user.name,
                     email: user.email,
@@ -131,6 +133,7 @@ export const optionalAuth = catchAsync(async (req, res, next) => {
                             maxAge: accessMaxAge,
                         });
                         req.user = {
+                            _id: user._id,
                             id: user._id.toString(),
                             name: user.name,
                             email: user.email,
@@ -149,6 +152,7 @@ export const optionalAuth = catchAsync(async (req, res, next) => {
             const user = await User.findById(decodedRefresh.userId || decodedRefresh.id);
             if (user && user.status !== 'Inactive') {
                 req.user = {
+                    _id: user._id,
                     id: user._id.toString(),
                     name: user.name,
                     email: user.email,
@@ -181,7 +185,6 @@ export const authorizeRoles = (...roles) => {
  * Convenience role helpers
  */
 export const isAdmin = authorizeRoles('Admin');
-export const isSellerOrAbove = authorizeRoles('Admin', 'Seller', 'Staff');
-export const isStaffOrAbove = isSellerOrAbove; // Backward-compatibility alias
-export const isSeller = authorizeRoles('Seller', 'Staff');
+export const isSellerOrAbove = authorizeRoles('Admin', 'Seller');
+export const isSeller = authorizeRoles('Seller');
 export const isCustomer = authorizeRoles('Customer');
