@@ -7,19 +7,19 @@ import {
     deleteUser,
     changeUserPasswordByAdmin,
 } from '../../controllers/user.controller.js';
-import { isAuthenticated, isManagerOrAbove, isAdmin } from '../../middleware/auth.middleware.js';
+import { isAuthenticated, isAdmin } from '../../middleware/auth.middleware.js';
 
 const router = express.Router();
 
-// Read operations allowed for Manager & Admin
-router.get('/', isAuthenticated, isManagerOrAbove, getAllUsers);
-router.get('/:id', isAuthenticated, isManagerOrAbove, getUserById);
+// User management restricted to Admin
+router.use(isAuthenticated, isAdmin);
 
-// Modification operations restricted to Admin
-router.post('/', isAuthenticated, isAdmin, createUserByAdmin);
-router.put('/:id', isAuthenticated, isAdmin, updateUser);
-router.patch('/:id', isAuthenticated, isAdmin, updateUser);
-router.delete('/:id', isAuthenticated, isAdmin, deleteUser);
-router.post('/:id/change-password', isAuthenticated, isAdmin, changeUserPasswordByAdmin);
+router.get('/', getAllUsers);
+router.get('/:id', getUserById);
+router.post('/', createUserByAdmin);
+router.put('/:id', updateUser);
+router.patch('/:id', updateUser);
+router.delete('/:id', deleteUser);
+router.post('/:id/change-password', changeUserPasswordByAdmin);
 
 export default router;

@@ -16,13 +16,12 @@ Complete REST API documentation for the **Kundu Agro & Fisheries** backend serve
 
 ## 🔐 Role-Based Access Control (RBAC) Matrix
 
-The system defines 4 roles (`user.model.js:L28`):
+The system defines 3 roles (`user.model.js:L28`):
 
 | Role | Description & Privileges |
 |---|---|
-| **Admin** | Full system access: User management (create, update, delete, reset passwords), Order management, Product & Blog full CRUD, view full analytics & revenue. |
-| **Manager** | Operational management: Product & Blog full CRUD, Order management & status updates, User read-only access, view dashboard statistics. |
-| **Staff** | Daily operations: View and update Order statuses, create/edit Products and Blogs, view dashboard. Cannot manage users or delete catalog items. |
+| **Admin** | Full system access: User management (create, update, delete, reset passwords), Order management, Product & Blog full CRUD (including deletion), view full analytics & revenue. |
+| **Seller** | Inventory & catalog operations: View and update Order statuses, create/edit Products and Blogs, view dashboard stats. Cannot manage users or delete catalog items. |
 | **Customer** | End user: Browse public products and blogs, submit fish seed seller listings, place orders, track personal orders, manage own profile. |
 
 ---
@@ -71,26 +70,26 @@ The system defines 4 roles (`user.model.js:L28`):
 | `GET` | `/orders/my-orders` | Get current user's orders | Authenticated |
 | `GET` | `/orders/track/:id` | Track order by Order ID or MongoDB ID | Public |
 
-### 6. Admin / Staff / Manager (`/api/v1/admin`)
+### 6. Admin & Seller (`/api/v1/admin`)
 | Category | Method | Endpoint | Description | Role Allowed |
 |---|---|---|---|---|
-| **Dashboard** | `GET` | `/admin/dashboard/stats` | Overview statistics & revenue | Staff, Manager, Admin |
-| **Products** | `GET` | `/admin/products` | List all inventory products | Staff, Manager, Admin |
-| **Products** | `GET` | `/admin/products/:idOrSlug` | Get product details | Staff, Manager, Admin |
-| **Products** | `POST` | `/admin/products` | Create product (multipart) | Staff, Manager, Admin |
-| **Products** | `PUT/PATCH`| `/admin/products/:id` | Update product & thumbnail | Staff, Manager, Admin |
-| **Products** | `DELETE`| `/admin/products/:id` | Delete product | Manager, Admin |
-| **Blogs** | `GET` | `/admin/blogs` | List all blog articles | Staff, Manager, Admin |
-| **Blogs** | `POST` | `/admin/blogs` | Create blog (thumbnail & video) | Staff, Manager, Admin |
-| **Blogs** | `PUT/PATCH`| `/admin/blogs/:id` | Update blog article | Staff, Manager, Admin |
-| **Blogs** | `DELETE`| `/admin/blogs/:id` | Delete blog article | Manager, Admin |
-| **Orders** | `GET` | `/admin/orders` | List all customer orders | Staff, Manager, Admin |
-| **Orders** | `GET` | `/admin/orders/:id` | Get order details | Staff, Manager, Admin |
-| **Orders** | `PATCH/PUT`| `/admin/orders/:id/status`| Update order status | Staff, Manager, Admin |
-| **Orders** | `DELETE`| `/admin/orders/:id` | Delete order record | Manager, Admin |
-| **Users** | `GET` | `/admin/users` | List users (filters by role/status) | Manager, Admin |
-| **Users** | `GET` | `/admin/users/:id` | Get user profile | Manager, Admin |
-| **Users** | `POST` | `/admin/users` | Create staff/manager/customer | Admin only |
+| **Dashboard** | `GET` | `/admin/dashboard/stats` | Overview statistics & revenue | Seller, Admin |
+| **Products** | `GET` | `/admin/products` | List all inventory products | Seller, Admin |
+| **Products** | `GET` | `/admin/products/:idOrSlug` | Get product details | Seller, Admin |
+| **Products** | `POST` | `/admin/products` | Create product (multipart) | Seller, Admin |
+| **Products** | `PUT/PATCH`| `/admin/products/:id` | Update product & thumbnail | Seller, Admin |
+| **Products** | `DELETE`| `/admin/products/:id` | Delete product | Admin only |
+| **Blogs** | `GET` | `/admin/blogs` | List all blog articles | Seller, Admin |
+| **Blogs** | `POST` | `/admin/blogs` | Create blog (thumbnail & video) | Seller, Admin |
+| **Blogs** | `PUT/PATCH`| `/admin/blogs/:id` | Update blog article | Seller, Admin |
+| **Blogs** | `DELETE`| `/admin/blogs/:id` | Delete blog article | Admin only |
+| **Orders** | `GET` | `/admin/orders` | List all customer orders | Seller, Admin |
+| **Orders** | `GET` | `/admin/orders/:id` | Get order details | Seller, Admin |
+| **Orders** | `PATCH/PUT`| `/admin/orders/:id/status`| Update order status | Seller, Admin |
+| **Orders** | `DELETE`| `/admin/orders/:id` | Delete order record | Admin only |
+| **Users** | `GET` | `/admin/users` | List users (filters by role/status) | Admin only |
+| **Users** | `GET` | `/admin/users/:id` | Get user profile | Admin only |
+| **Users** | `POST` | `/admin/users` | Create seller/customer | Admin only |
 | **Users** | `PUT/PATCH`| `/admin/users/:id` | Update user role, status | Admin only |
 | **Users** | `DELETE`| `/admin/users/:id` | Delete user | Admin only |
 | **Users** | `POST` | `/admin/users/:id/change-password` | Reset user password | Admin only |
@@ -257,8 +256,7 @@ The system defines 4 roles (`user.model.js:L28`):
     "breakdown": {
       "roles": {
         "Admin": 2,
-        "Manager": 4,
-        "Staff": 10,
+        "Seller": 14,
         "Customer": 104
       },
       "userStatuses": {

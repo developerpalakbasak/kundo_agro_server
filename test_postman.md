@@ -89,7 +89,7 @@ Create an Environment in Postman (e.g. `Kundu Agro Local`) and add the following
 
 ### `GET` Get Authenticated User Profile (Me)
 - **URL**: `{{baseUrl}}/api/v1/auth/me`
-- **Auth**: `Bearer {{accessToken}}` (Customer / Staff / Manager / Admin)
+- **Auth**: `Bearer {{accessToken}}` (Customer / Seller / Admin)
 
 ### `GET` Verify Session Token
 - **URL**: `{{baseUrl}}/api/v1/auth/verify`
@@ -204,9 +204,9 @@ Create an Environment in Postman (e.g. `Kundu Agro Local`) and add the following
 - **Auth**: Public (Optional Auth)
 - **Request Body**: Same as Fish Seed payload above.
 
-### `POST` Create New Product (Staff / Manager / Admin)
+### `POST` Create New Product (Seller / Admin)
 - **URL**: `{{baseUrl}}/api/v1/products` *(or `POST {{baseUrl}}/api/v1/admin/products`)*
-- **Auth**: `Bearer {{accessToken}}` (Role: `Staff`, `Manager`, `Admin`)
+- **Auth**: `Bearer {{accessToken}}` (Role: `Seller`, `Admin`)
 - **Body Type**: `application/json` or `multipart/form-data`
 - **Request Body (JSON)**:
 ```json
@@ -226,9 +226,9 @@ Create an Environment in Postman (e.g. `Kundu Agro Local`) and add the following
 }
 ```
 
-### `PUT` / `PATCH` Update Product (Staff / Manager / Admin)
+### `PUT` / `PATCH` Update Product (Seller / Admin)
 - **URL**: `{{baseUrl}}/api/v1/products/{{productId}}`
-- **Auth**: `Bearer {{accessToken}}` (Role: `Staff`, `Manager`, `Admin`)
+- **Auth**: `Bearer {{accessToken}}` (Role: `Seller`, `Admin`)
 - **Request Body (JSON)**:
 ```json
 {
@@ -239,9 +239,9 @@ Create an Environment in Postman (e.g. `Kundu Agro Local`) and add the following
 }
 ```
 
-### `DELETE` Delete Product (Manager / Admin)
+### `DELETE` Delete Product (Admin only)
 - **URL**: `{{baseUrl}}/api/v1/products/{{productId}}`
-- **Auth**: `Bearer {{accessToken}}` (Role: `Manager` or `Admin`)
+- **Auth**: `Bearer {{accessToken}}` (Role: `Admin`)
 
 ---
 
@@ -266,9 +266,9 @@ Create an Environment in Postman (e.g. `Kundu Agro Local`) and add the following
 - **URL**: `{{baseUrl}}/api/v1/blogs/complete-guide-to-pond-preparation` *(or MongoDB `_id`)*
 - **Auth**: None (Public)
 
-### `POST` Create Blog Post (Staff / Manager / Admin)
+### `POST` Create Blog Post (Seller / Admin)
 - **URL**: `{{baseUrl}}/api/v1/blogs` *(or `POST {{baseUrl}}/api/v1/admin/blogs`)*
-- **Auth**: `Bearer {{accessToken}}` (Role: `Staff`, `Manager`, `Admin`)
+- **Auth**: `Bearer {{accessToken}}` (Role: `Seller`, `Admin`)
 - **Body Type**: `application/json` or `multipart/form-data`
 - **Request Body (JSON)**:
 ```json
@@ -284,9 +284,9 @@ Create an Environment in Postman (e.g. `Kundu Agro Local`) and add the following
 ```
 *(If using `multipart/form-data`: field `thumbnail` [File], field `videoFile` [File])*
 
-### `PUT` / `PATCH` Update Blog Post (Staff / Manager / Admin)
+### `PUT` / `PATCH` Update Blog Post (Seller / Admin)
 - **URL**: `{{baseUrl}}/api/v1/blogs/{{blogId}}`
-- **Auth**: `Bearer {{accessToken}}` (Role: `Staff`, `Manager`, `Admin`)
+- **Auth**: `Bearer {{accessToken}}` (Role: `Seller`, `Admin`)
 - **Request Body (JSON)**:
 ```json
 {
@@ -296,9 +296,9 @@ Create an Environment in Postman (e.g. `Kundu Agro Local`) and add the following
 }
 ```
 
-### `DELETE` Delete Blog Post (Manager / Admin)
+### `DELETE` Delete Blog Post (Admin only)
 - **URL**: `{{baseUrl}}/api/v1/blogs/{{blogId}}`
-- **Auth**: `Bearer {{accessToken}}` (Role: `Manager` or `Admin`)
+- **Auth**: `Bearer {{accessToken}}` (Role: `Admin`)
 
 ---
 
@@ -353,7 +353,7 @@ Create an Environment in Postman (e.g. `Kundu Agro Local`) and add the following
 
 ### 7.1 Dashboard & Statistics
 - **URL**: `GET {{baseUrl}}/api/v1/admin/dashboard` *(or `GET {{baseUrl}}/api/v1/admin/dashboard/stats`, `GET {{baseUrl}}/api/v1/admin/stats`)*
-- **Auth**: `Bearer {{accessToken}}` (Role: `Staff`, `Manager`, `Admin`)
+- **Auth**: `Bearer {{accessToken}}` (Role: `Seller`, `Admin`)
 - **Sample Success Response**:
 ```json
 {
@@ -368,7 +368,7 @@ Create an Environment in Postman (e.g. `Kundu Agro Local`) and add the following
       "totalRevenue": 345200
     },
     "breakdown": {
-      "roles": { "Admin": 2, "Manager": 3, "Staff": 5, "Customer": 170 },
+      "roles": { "Admin": 2, "Seller": 8, "Customer": 170 },
       "userStatuses": { "Active": 178, "Inactive": 2 },
       "orderStatuses": { "processing": 12, "shipped": 18, "delivered": 50, "cancelled": 5 }
     },
@@ -387,7 +387,7 @@ Create an Environment in Postman (e.g. `Kundu Agro Local`) and add the following
 
 #### `GET` Get All Orders with Filters & Pagination
 - **URL**: `{{baseUrl}}/api/v1/admin/orders`
-- **Auth**: `Bearer {{accessToken}}` (Staff, Manager, Admin)
+- **Auth**: `Bearer {{accessToken}}` (Seller, Admin)
 - **Query Parameters**:
   - `page`: `1`
   - `limit`: `20`
@@ -398,11 +398,11 @@ Create an Environment in Postman (e.g. `Kundu Agro Local`) and add the following
 
 #### `GET` Get Single Order Full Details
 - **URL**: `{{baseUrl}}/api/v1/admin/orders/ORD-2026-8841` *(or MongoDB `_id`)*
-- **Auth**: `Bearer {{accessToken}}` (Staff, Manager, Admin)
+- **Auth**: `Bearer {{accessToken}}` (Seller, Admin)
 
 #### `PATCH` / `PUT` Update Order Status & Payment
 - **URL**: `{{baseUrl}}/api/v1/admin/orders/ORD-2026-8841/status` *(or `PATCH {{baseUrl}}/api/v1/admin/orders/ORD-2026-8841`)*
-- **Auth**: `Bearer {{accessToken}}` (Staff, Manager, Admin)
+- **Auth**: `Bearer {{accessToken}}` (Seller, Admin)
 - **Request Body (JSON)**:
 ```json
 {
@@ -414,7 +414,7 @@ Create an Environment in Postman (e.g. `Kundu Agro Local`) and add the following
 
 #### `DELETE` Delete Order
 - **URL**: `{{baseUrl}}/api/v1/admin/orders/ORD-2026-8841`
-- **Auth**: `Bearer {{accessToken}}` (Manager, Admin only)
+- **Auth**: `Bearer {{accessToken}}` (Admin only)
 
 ---
 
@@ -422,9 +422,9 @@ Create an Environment in Postman (e.g. `Kundu Agro Local`) and add the following
 
 #### `GET` Get All Users (Filtered & Paginated)
 - **URL**: `{{baseUrl}}/api/v1/admin/users` *(or `GET {{baseUrl}}/api/v1/users`)*
-- **Auth**: `Bearer {{accessToken}}` (Manager, Admin)
+- **Auth**: `Bearer {{accessToken}}` (Admin only)
 - **Query Parameters**:
-  - `role`: `Staff` *(options: `Admin`, `Manager`, `Staff`, `Customer`)*
+  - `role`: `Seller` *(options: `Admin`, `Seller`, `Customer`)*
   - `status`: `Active` *(options: `Active`, `Inactive`)*
   - `search`: `rahim`
   - `page`: `1`
@@ -433,9 +433,9 @@ Create an Environment in Postman (e.g. `Kundu Agro Local`) and add the following
 
 #### `GET` Get Single User Details by ID
 - **URL**: `{{baseUrl}}/api/v1/admin/users/{{userId}}`
-- **Auth**: `Bearer {{accessToken}}` (Manager, Admin)
+- **Auth**: `Bearer {{accessToken}}` (Admin only)
 
-#### `POST` Create New User / Staff / Manager / Admin
+#### `POST` Create New User / Seller / Admin
 - **URL**: `{{baseUrl}}/api/v1/admin/users`
 - **Auth**: `Bearer {{accessToken}}` (Admin only)
 - **Request Body (JSON)**:
@@ -457,8 +457,8 @@ Create an Environment in Postman (e.g. `Kundu Agro Local`) and add the following
 - **Request Body (JSON)**:
 ```json
 {
-  "name": "Kamrul Hassan (Senior Staff)",
-  "role": "Manager",
+  "name": "Kamrul Hassan (Seller)",
+  "role": "Seller",
   "status": "Active",
   "phone": "01788990022"
 }
@@ -503,23 +503,23 @@ Create an Environment in Postman (e.g. `Kundu Agro Local`) and add the following
 | **Products** | `POST` | `/api/v1/products/fish-seed` | Public / Authenticated |
 | **Products** | `POST` | `/api/v1/products` | Staff+ |
 | **Products** | `PUT` / `PATCH` | `/api/v1/products/:id` | Staff+ |
-| **Products** | `DELETE` | `/api/v1/products/:id` | Manager+ |
+| **Products** | `DELETE` | `/api/v1/products/:id` | Admin only |
 | **Blogs** | `GET` | `/api/v1/blogs` | Public |
 | **Blogs** | `GET` | `/api/v1/blogs/tags` | Public |
 | **Blogs** | `GET` | `/api/v1/blogs/:idOrSlug` | Public |
-| **Blogs** | `POST` | `/api/v1/blogs` | Staff+ |
-| **Blogs** | `PUT` / `PATCH` | `/api/v1/blogs/:id` | Staff+ |
-| **Blogs** | `DELETE` | `/api/v1/blogs/:id` | Manager+ |
+| **Blogs** | `POST` | `/api/v1/blogs` | Seller+ |
+| **Blogs** | `PUT` / `PATCH` | `/api/v1/blogs/:id` | Seller+ |
+| **Blogs** | `DELETE` | `/api/v1/blogs/:id` | Admin only |
 | **Orders** | `POST` | `/api/v1/orders` | Public / Authenticated |
 | **Orders** | `GET` | `/api/v1/orders/track/:id` | Public |
 | **Orders** | `GET` | `/api/v1/orders/my-orders` | Authenticated |
-| **Admin Stats** | `GET` | `/api/v1/admin/dashboard` | Staff+ |
-| **Admin Orders** | `GET` | `/api/v1/admin/orders` | Staff+ |
-| **Admin Orders** | `GET` | `/api/v1/admin/orders/:id` | Staff+ |
-| **Admin Orders** | `PATCH` / `PUT` | `/api/v1/admin/orders/:id/status` | Staff+ |
-| **Admin Orders** | `DELETE` | `/api/v1/admin/orders/:id` | Manager+ |
-| **Admin Users** | `GET` | `/api/v1/admin/users` | Manager+ |
-| **Admin Users** | `GET` | `/api/v1/admin/users/:id` | Manager+ |
+| **Admin Stats** | `GET` | `/api/v1/admin/dashboard` | Seller+ |
+| **Admin Orders** | `GET` | `/api/v1/admin/orders` | Seller+ |
+| **Admin Orders** | `GET` | `/api/v1/admin/orders/:id` | Seller+ |
+| **Admin Orders** | `PATCH` / `PUT` | `/api/v1/admin/orders/:id/status` | Seller+ |
+| **Admin Orders** | `DELETE` | `/api/v1/admin/orders/:id` | Admin only |
+| **Admin Users** | `GET` | `/api/v1/admin/users` | Admin only |
+| **Admin Users** | `GET` | `/api/v1/admin/users/:id` | Admin only |
 | **Admin Users** | `POST` | `/api/v1/admin/users` | Admin only |
 | **Admin Users** | `PUT` / `PATCH` | `/api/v1/admin/users/:id` | Admin only |
 | **Admin Users** | `POST` | `/api/v1/admin/users/:id/change-password` | Admin only |

@@ -155,7 +155,7 @@ export const getOrderByIdOrTracking = catchAsync(async (req, res) => {
 });
 
 /**
- * Get all Orders (Admin / Manager / Staff) with search, filter, and pagination
+ * Get all Orders (Admin / Seller) with search, filter, and pagination
  */
 export const getAllOrdersAdmin = catchAsync(async (req, res) => {
     const { status, paymentStatus, search, page = 1, limit = 50, sort } = req.query;
@@ -202,7 +202,7 @@ export const getAllOrdersAdmin = catchAsync(async (req, res) => {
 });
 
 /**
- * Get single Order details (Admin / Manager / Staff)
+ * Get single Order details (Admin / Seller)
  */
 export const getAdminOrderById = catchAsync(async (req, res) => {
     const { id } = req.params;
@@ -226,7 +226,7 @@ export const getAdminOrderById = catchAsync(async (req, res) => {
 });
 
 /**
- * Update Order status / payment status (Staff / Manager / Admin)
+ * Update Order status / payment status (Seller / Admin)
  */
 export const updateOrderStatus = catchAsync(async (req, res) => {
     const { id } = req.params;
@@ -274,7 +274,7 @@ export const updateOrderStatus = catchAsync(async (req, res) => {
 });
 
 /**
- * Delete an Order (Admin / Manager only)
+ * Delete an Order (Admin only)
  */
 export const deleteOrder = catchAsync(async (req, res) => {
     const { id } = req.params;

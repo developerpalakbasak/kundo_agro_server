@@ -6,7 +6,7 @@ import slugify from '../utils/slugify.js';
 import { removeUploadedFile } from '../middleware/upload.middleware.js';
 
 /**
- * Create a new Blog post (Admin / Staff / Manager)
+ * Create a new Blog post (Admin / Seller)
  */
 export const createBlog = catchAsync(async (req, res) => {
     const { title, description, content, videoUrl: rawVideoUrl, tags: rawTags, isPublished } = req.body;
@@ -165,7 +165,7 @@ export const getBlogByIdOrSlug = catchAsync(async (req, res) => {
 });
 
 /**
- * Update Blog by ID (Admin / Staff / Manager)
+ * Update Blog by ID (Admin / Seller)
  */
 export const updateBlog = catchAsync(async (req, res) => {
     const { id } = req.params;
@@ -239,7 +239,7 @@ export const updateBlog = catchAsync(async (req, res) => {
 });
 
 /**
- * Delete Blog by ID (Admin / Manager only)
+ * Delete Blog by ID (Admin only)
  */
 export const deleteBlog = catchAsync(async (req, res) => {
     const { id } = req.params;

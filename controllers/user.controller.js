@@ -33,7 +33,7 @@ export const registerUser = catchAsync(async (req, res) => {
     console.log("ROle:", role)
     let assignedRole = 'Customer';
     if (role) {
-        const validRoles = ['Admin', 'Manager', 'Staff', 'Customer'];
+        const validRoles = ['Admin', 'Seller', 'Customer'];
         if (!validRoles.includes(role)) {
             throw new AppError(`Invalid role. Allowed roles: ${validRoles.join(', ')}`, 400);
         }
@@ -166,7 +166,7 @@ export const refreshSession = catchAsync(async (req, res) => {
 });
 
 /**
- * Update authenticated user's own profile (Customer / Staff / Manager / Admin)
+ * Update authenticated user's own profile (Customer / Seller / Admin)
  */
 export const updateMyProfile = catchAsync(async (req, res) => {
     const { name, phone, avatar } = req.body;
@@ -221,7 +221,7 @@ export const changeAdminPassword = catchAsync(async (req, res) => {
 });
 
 /**
- * Get all users with filters and pagination (Manager & Admin)
+ * Get all users with filters and pagination (Admin only)
  */
 export const getAllUsers = catchAsync(async (req, res) => {
     const { role, status, search, page = 1, limit = 50, sort } = req.query;
@@ -263,7 +263,7 @@ export const getAllUsers = catchAsync(async (req, res) => {
 });
 
 /**
- * Get single user by ID (Manager & Admin)
+ * Get single user by ID (Admin only)
  */
 export const getUserById = catchAsync(async (req, res) => {
     const { id } = req.params;
@@ -301,7 +301,7 @@ export const createUserByAdmin = catchAsync(async (req, res) => {
         throw new AppError('Email is already registered by another user', 400);
     }
 
-    const validRoles = ['Admin', 'Manager', 'Staff', 'Customer'];
+    const validRoles = ['Admin', 'Seller', 'Customer'];
     const validStatuses = ['Active', 'Inactive'];
 
     if (role && !validRoles.includes(role)) {
@@ -354,7 +354,7 @@ export const updateUser = catchAsync(async (req, res) => {
 
     if (name !== undefined) user.name = name.trim();
     if (role !== undefined) {
-        const validRoles = ['Admin', 'Manager', 'Staff', 'Customer'];
+        const validRoles = ['Admin', 'Seller', 'Customer'];
         if (!validRoles.includes(role)) {
             throw new AppError(`Invalid role: ${role}`, 400);
         }

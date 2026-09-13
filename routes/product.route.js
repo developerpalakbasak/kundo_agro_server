@@ -7,7 +7,7 @@ import {
     updateProduct,
     deleteProduct,
 } from '../controllers/product.controller.js';
-import { isAuthenticated, isStaffOrAbove, isManagerOrAbove, optionalAuth } from '../middleware/auth.middleware.js';
+import { isAuthenticated, isSellerOrAbove, isAdmin, optionalAuth } from '../middleware/auth.middleware.js';
 import { uploadProductThumbnail } from '../middleware/upload.middleware.js';
 import { getAllCategories } from '../controllers/category.controller.js';
 import { getAllDistricts, getAllUnits } from '../controllers/product.controller.js';
@@ -24,10 +24,10 @@ router.get('/:idOrSlug', getProductByIdOrSlug);
 // Customer / Seller Submission
 router.post('/fish-seed', optionalAuth, uploadProductThumbnail, createFishSeedProduct);
 
-// Protected Staff / Admin Routes (Also available under /api/v1/admin/products)
-router.post('/', isAuthenticated, isStaffOrAbove, uploadProductThumbnail, createProduct);
-router.put('/:id', isAuthenticated, isStaffOrAbove, uploadProductThumbnail, updateProduct);
-router.patch('/:id', isAuthenticated, isStaffOrAbove, uploadProductThumbnail, updateProduct);
-router.delete('/:id', isAuthenticated, isManagerOrAbove, deleteProduct);
+// Protected Seller / Admin Routes (Also available under /api/v1/admin/products)
+router.post('/', isAuthenticated, isSellerOrAbove, uploadProductThumbnail, createProduct);
+router.put('/:id', isAuthenticated, isSellerOrAbove, uploadProductThumbnail, updateProduct);
+router.patch('/:id', isAuthenticated, isSellerOrAbove, uploadProductThumbnail, updateProduct);
+router.delete('/:id', isAuthenticated, isAdmin, deleteProduct);
 
 export default router;

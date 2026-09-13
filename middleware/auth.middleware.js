@@ -166,7 +166,7 @@ export const optionalAuth = catchAsync(async (req, res, next) => {
 
 /**
  * Middleware to restrict access to specific roles
- * Values: "Admin", "Manager", "Staff", "Customer"
+ * Values: "Admin", "Seller", "Customer"
  */
 export const authorizeRoles = (...roles) => {
     return (req, res, next) => {
@@ -181,6 +181,7 @@ export const authorizeRoles = (...roles) => {
  * Convenience role helpers
  */
 export const isAdmin = authorizeRoles('Admin');
-export const isManagerOrAbove = authorizeRoles('Admin', 'Manager');
-export const isStaffOrAbove = authorizeRoles('Admin', 'Manager', 'Staff');
+export const isSellerOrAbove = authorizeRoles('Admin', 'Seller', 'Staff');
+export const isStaffOrAbove = isSellerOrAbove; // Backward-compatibility alias
+export const isSeller = authorizeRoles('Seller', 'Staff');
 export const isCustomer = authorizeRoles('Customer');

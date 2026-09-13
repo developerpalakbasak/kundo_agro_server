@@ -60,7 +60,7 @@ export const DEFAULT_PRODUCT_CATEGORIES = [
 ];
 
 /**
- * Create a new Product (Admin / Staff / Manager)
+ * Create a new Product (Admin / Seller)
  */
 export const createProduct = catchAsync(async (req, res) => {
     const {
@@ -316,7 +316,7 @@ export const getProductByIdOrSlug = catchAsync(async (req, res) => {
 });
 
 /**
- * Update Product by ID (Admin / Staff / Manager)
+ * Update Product by ID (Admin / Seller)
  */
 export const updateProduct = catchAsync(async (req, res) => {
     const { id } = req.params;
@@ -414,7 +414,7 @@ export const updateProduct = catchAsync(async (req, res) => {
 });
 
 /**
- * Delete Product by ID (Admin / Manager only)
+ * Delete Product by ID (Admin only)
  */
 export const deleteProduct = catchAsync(async (req, res) => {
     const { id } = req.params;

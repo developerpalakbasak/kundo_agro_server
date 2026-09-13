@@ -5,7 +5,7 @@ import Order from '../model/order.model.js';
 import catchAsync from '../utils/catchAsync.js';
 
 /**
- * Get aggregated dashboard statistics (Admin / Manager / Staff)
+ * Get aggregated dashboard statistics (Admin / Seller)
  */
 export const getDashboardStats = catchAsync(async (req, res) => {
     const [
@@ -47,12 +47,17 @@ export const getDashboardStats = catchAsync(async (req, res) => {
 
     const roleCounts = {
         Admin: 0,
-        Manager: 0,
-        Staff: 0,
+        Seller: 0,
         Customer: 0,
     };
     usersByRole.forEach((curr) => {
-        if (curr._id) roleCounts[curr._id] = curr.count;
+        if (curr._id) {
+            if (curr._id === 'Staff') {
+                roleCounts.Seller = (roleCounts.Seller || 0) + curr.count;
+            } else if (Object.prototype.hasOwnProperty.call(roleCounts, curr._id)) {
+                roleCounts[curr._id] = curr.count;
+            }
+        }
     });
 
     const statusCounts = {

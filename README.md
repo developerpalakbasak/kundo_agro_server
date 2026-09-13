@@ -8,7 +8,7 @@ A scalable, secure, and production-ready **REST API** backend for **Kundu Agro a
 
 - 🔐 **Authentication & Authorization**:
   - Secure JWT authentication with Access and Refresh tokens.
-  - Role-based Access Control (RBAC): `Admin`, `Manager`, `Staff`, `Customer`.
+  - Role-based Access Control (RBAC): `Admin`, `Seller`, `Customer`.
   - Password hashing with `bcryptjs` and pre-save lifecycle hooks.
   - HttpOnly cookie management and Bearer token header support.
 - 📦 **Product Catalog Management**:
