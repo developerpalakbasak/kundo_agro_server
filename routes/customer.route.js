@@ -3,7 +3,7 @@ import {
     aboutMe,
     updateMyProfile,
     changeAdminPassword,
-} from '../controllers/user.controller.js';
+} from '../controllers/customer.controller.js';
 import {
     getMyOrders,
     getOrderByIdOrTracking,

@@ -13,5 +13,6 @@ router.use('/products', productRoutes);
 router.use('/blogs', blogRoutes);
 router.use('/orders', orderRoutes);
 router.use('/users', userRoutes);
+router.use('/sellers', userRoutes);
 
 export default router;

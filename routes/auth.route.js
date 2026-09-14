@@ -7,15 +7,16 @@ import {
     verifyUser,
     refreshSession,
     changeAdminPassword,
-} from '../controllers/user.controller.js';
-import { isAuthenticated, optionalAuth } from '../middleware/auth.middleware.js';
+} from '../controllers/customer.controller.js';
+import { createSellerAccount } from '../controllers/seller.controller.js';
+import { isAuthenticated, optionalAuth, disallowAuthenticated } from '../middleware/auth.middleware.js';
 
 const router = express.Router();
 
-// Public auth endpoints
-router.post('/register', optionalAuth, registerUser);
-router.post('/user/register', optionalAuth, registerUser); // legacy alias
-router.post('/login', login);
+// Public auth endpoints (rejects request if user already has valid cookies/session)
+router.post('/user/register', optionalAuth, disallowAuthenticated, registerUser);
+router.post('/seller/register', optionalAuth, disallowAuthenticated, createSellerAccount);
+router.post('/login',disallowAuthenticated, login);
 router.get('/logout', logout);
 router.post('/logout', logout);
 router.post('/refresh', refreshSession);

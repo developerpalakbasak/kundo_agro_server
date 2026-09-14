@@ -6,7 +6,8 @@ import User from '../model/user.model.js';
 import AppError from '../utils/appError.js';
 import catchAsync from '../utils/catchAsync.js';
 import slugify from '../utils/slugify.js';
-import { decodeToken } from '../utils/token.js';
+import { decodeToken, generateAccessToken, generateRefreshToken } from '../utils/token.js';
+import { setAuthCookies } from '../utils/response.js';
 import { removeUploadedFile } from '../middleware/upload.middleware.js';
 
 /**
@@ -534,6 +535,98 @@ export const deleteSellerProduct = catchAsync(async (req, res) => {
     });
 });
 
+/**
+ * 7. Create Seller Account
+ * Allows a new or existing user to register as a seller with isVerifiedSeller: false.
+ * Admin approval is required to set isVerifiedSeller: true.
+ */
+export const createSellerAccount = catchAsync(async (req, res) => {
+    // If user is already authenticated with valid session/cookies, disallow account creation
+    if (req.user) {
+        throw new AppError('You are already logged in with an active account. Please log out first before creating a new account.', 400);
+    }
+
+    const existingToken = req.cookies?.accessToken || req.cookies?.token || req.cookies?.customerAccessToken;
+    const existingRefreshToken = req.cookies?.refreshToken || req.headers['x-refresh-token'];
+
+    if (existingToken) {
+        try {
+            const decoded = decodeToken(existingToken);
+            if (decoded?.id) {
+                const user = await User.findById(decoded.id);
+                if (user && user.status !== 'Inactive') {
+                    throw new AppError('You are already logged in with an active account. Please log out first before creating a new account.', 400);
+                }
+            }
+        } catch (err) {
+            if (err instanceof AppError) throw err;
+        }
+    }
+
+    if (existingRefreshToken) {
+        try {
+            const decodedRefresh = jwt.verify(existingRefreshToken, process.env.JWT_SECRET);
+            const userId = decodedRefresh.userId || decodedRefresh.id;
+            if (userId) {
+                const user = await User.findById(userId);
+                if (user && user.status !== 'Inactive') {
+                    throw new AppError('You are already logged in with an active account. Please log out first before creating a new account.', 400);
+                }
+            }
+        } catch (err) {
+            if (err instanceof AppError) throw err;
+        }
+    }
+
+    const { name, email, password, phone, avatar, status } = req.body;
+
+    if (!name || !name.trim()) {
+        throw new AppError('Full name is required', 400);
+    }
+    if (!email || !email.trim()) {
+        throw new AppError('Email address is required', 400);
+    }
+    if (!password || password.length < 6) {
+        throw new AppError('Password is required and must be at least 6 characters', 400);
+    }
+
+    const cleanEmail = email.toLowerCase().trim();
+
+    // Check if user already exists
+    const existingUser = await User.findOne({ email: cleanEmail });
+    if (existingUser) {
+        throw new AppError('Email is already registered. Please use a different email or log in.', 400);
+    }
+
+    // Directly create seller account with role: 'Seller' and isVerifiedSeller: false
+    const user = await User.create({
+        name: name.trim(),
+        email: cleanEmail,
+        password,
+        role: 'Seller',
+        isVerifiedSeller: false,
+        status: status || 'Active',
+        phone: phone ? phone.trim() : '',
+        avatar: avatar || null,
+    });
+
+    const accessToken = generateAccessToken(user);
+    const refreshToken = generateRefreshToken(user._id);
+
+    setAuthCookies(
+        req,
+        res,
+        accessToken,
+        refreshToken,
+        'Seller registration successful. Pending admin approval.',
+        201,
+        null,
+        user
+    );
+});
+
+export const createAccount = createSellerAccount;
+
 // Aliases matching existing route names
 export const getDashboardStats = getSellerDashboardStats;
 export const getAllProducts = getSellerProducts;
@@ -541,3 +634,4 @@ export const getProductByIdOrSlug = getSellerProductById;
 export const createProduct = createSellerProduct;
 export const updateProduct = updateSellerProduct;
 export const deleteProduct = deleteSellerProduct;
+

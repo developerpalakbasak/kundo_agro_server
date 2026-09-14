@@ -3,12 +3,49 @@ import User from '../model/user.model.js';
 import AppError from '../utils/appError.js';
 import catchAsync from '../utils/catchAsync.js';
 import { clearCookie, setAuthCookies } from '../utils/response.js';
-import { generateAccessToken, generateRefreshToken } from '../utils/token.js';
+import { generateAccessToken, generateRefreshToken, decodeToken } from '../utils/token.js';
 
 /**
  * Register a new user (Customer by default, or specific role if Admin)
  */
 export const registerUser = catchAsync(async (req, res) => {
+    // If user is already authenticated with valid session/cookies, disallow account creation
+    if (req.user) {
+        throw new AppError('You are already logged in with an active account. Please log out first before creating a new account.', 400);
+    }
+
+    const existingToken = req.cookies?.accessToken || req.cookies?.token || req.cookies?.customerAccessToken;
+    const existingRefreshToken = req.cookies?.refreshToken || req.headers['x-refresh-token'];
+
+    if (existingToken) {
+        try {
+            const decoded = decodeToken(existingToken);
+            if (decoded?.id) {
+                const user = await User.findById(decoded.id);
+                if (user && user.status !== 'Inactive') {
+                    throw new AppError('You are already logged in with an active account. Please log out first before creating a new account.', 400);
+                }
+            }
+        } catch (err) {
+            if (err instanceof AppError) throw err;
+        }
+    }
+
+    if (existingRefreshToken) {
+        try {
+            const decodedRefresh = jwt.verify(existingRefreshToken, process.env.JWT_SECRET);
+            const userId = decodedRefresh.userId || decodedRefresh.id;
+            if (userId) {
+                const user = await User.findById(userId);
+                if (user && user.status !== 'Inactive') {
+                    throw new AppError('You are already logged in with an active account. Please log out first before creating a new account.', 400);
+                }
+            }
+        } catch (err) {
+            if (err instanceof AppError) throw err;
+        }
+    }
+
     const { name, email, password, role, status, phone, avatar } = req.body;
 
     if (!name || !name.trim()) {
@@ -224,11 +261,14 @@ export const changeAdminPassword = catchAsync(async (req, res) => {
  * Get all users with filters and pagination (Admin only)
  */
 export const getAllUsers = catchAsync(async (req, res) => {
-    const { role, status, search, page = 1, limit = 50, sort } = req.query;
+    const { role, status, isVerifiedSeller, search, page = 1, limit = 50, sort } = req.query;
 
     const filter = {};
     if (role && role !== 'all') filter.role = role;
     if (status && status !== 'all') filter.status = status;
+    if (isVerifiedSeller !== undefined && isVerifiedSeller !== 'all') {
+        filter.isVerifiedSeller = isVerifiedSeller === 'true' || isVerifiedSeller === true;
+    }
     if (search) {
         filter.$or = [
             { name: { $regex: search, $options: 'i' } },
@@ -283,7 +323,7 @@ export const getUserById = catchAsync(async (req, res) => {
  * Admin create user with specified role and status (Admin only)
  */
 export const createUserByAdmin = catchAsync(async (req, res) => {
-    const { name, email, password, role, status, phone, avatar } = req.body;
+    const { name, email, password, role, status, phone, avatar, isVerifiedSeller } = req.body;
 
     if (!name || !name.trim()) {
         throw new AppError('Name is required', 400);
@@ -319,6 +359,7 @@ export const createUserByAdmin = catchAsync(async (req, res) => {
         status: status || 'Active',
         phone: phone ? phone.trim() : '',
         avatar: avatar || null,
+        isVerifiedSeller: isVerifiedSeller !== undefined ? Boolean(isVerifiedSeller) : false,
     });
 
     res.status(201).json({
@@ -333,7 +374,7 @@ export const createUserByAdmin = catchAsync(async (req, res) => {
  */
 export const updateUser = catchAsync(async (req, res) => {
     const { id } = req.params;
-    const { name, email, role, status, phone, avatar, password } = req.body;
+    const { name, email, role, status, phone, avatar, password, isVerifiedSeller } = req.body;
 
     const user = await User.findById(id).select('+password');
     if (!user) {
@@ -369,6 +410,9 @@ export const updateUser = catchAsync(async (req, res) => {
     }
     if (phone !== undefined) user.phone = phone.trim();
     if (avatar !== undefined) user.avatar = avatar;
+    if (isVerifiedSeller !== undefined) {
+        user.isVerifiedSeller = Boolean(isVerifiedSeller);
+    }
     if (password) {
         if (password.length < 6) {
             throw new AppError('Password must be at least 6 characters', 400);
@@ -381,6 +425,34 @@ export const updateUser = catchAsync(async (req, res) => {
     res.status(200).json({
         success: true,
         message: 'User updated successfully',
+        user,
+    });
+});
+
+/**
+ * Approve / verify seller status by Admin
+ */
+export const approveSeller = catchAsync(async (req, res) => {
+    const { id } = req.params;
+    const { isVerifiedSeller = true } = req.body;
+
+    const user = await User.findById(id);
+    if (!user) {
+        throw new AppError('User not found', 404);
+    }
+
+    user.isVerifiedSeller = Boolean(isVerifiedSeller);
+    if (user.role === 'Seller' && user.isVerifiedSeller) {
+        user.isVerifiedSeller = true;
+    }
+
+    await user.save();
+
+    res.status(200).json({
+        success: true,
+        message: user.isVerifiedSeller
+            ? `Seller “${user.name}” approved successfully.`
+            : `Seller “${user.name}” verification status updated.`,
         user,
     });
 });

@@ -55,6 +55,11 @@ const userSchema = new Schema(
       default: null,
       trim: true,
     },
+    isVerifiedSeller: {
+      type: Boolean,
+      default: false,
+      index: true,
+    },
   },
   {
     timestamps: true,

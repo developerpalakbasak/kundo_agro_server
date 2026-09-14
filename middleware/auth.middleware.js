@@ -86,7 +86,8 @@ export const isAuthenticated = catchAsync(async (req, res, next) => {
         name: user.name,
         email: user.email,
         role: user.role,
-        status: user.status
+        status: user.status,
+        isVerifiedSeller: user.isVerifiedSeller ?? false,
     };
 
     next();
@@ -115,7 +116,8 @@ export const optionalAuth = catchAsync(async (req, res, next) => {
                     name: user.name,
                     email: user.email,
                     role: user.role,
-                    status: user.status
+                    status: user.status,
+                    isVerifiedSeller: user.isVerifiedSeller ?? false,
                 };
             }
         } catch (err) {
@@ -138,7 +140,8 @@ export const optionalAuth = catchAsync(async (req, res, next) => {
                             name: user.name,
                             email: user.email,
                             role: user.role,
-                            status: user.status
+                            status: user.status,
+                            isVerifiedSeller: user.isVerifiedSeller ?? false,
                         };
                     }
                 } catch {
@@ -157,7 +160,8 @@ export const optionalAuth = catchAsync(async (req, res, next) => {
                     name: user.name,
                     email: user.email,
                     role: user.role,
-                    status: user.status
+                    status: user.status,
+                    isVerifiedSeller: user.isVerifiedSeller ?? false,
                 };
             }
         } catch {
@@ -188,3 +192,52 @@ export const isAdmin = authorizeRoles('Admin');
 export const isSellerOrAbove = authorizeRoles('Admin', 'Seller');
 export const isSeller = authorizeRoles('Seller');
 export const isCustomer = authorizeRoles('Customer');
+
+/**
+ * Middleware to ensure request is from a guest (unauthenticated).
+ * If user has valid cookies or active session, throws a 400 warning/error.
+ */
+export const disallowAuthenticated = catchAsync(async (req, res, next) => {
+    if (req.user) {
+        throw new AppError('You are already logged in with an active account. Please log out first before creating a new account.', 400);
+    }
+
+    let token = req.cookies?.accessToken || req.cookies?.token || req.cookies?.customerAccessToken;
+    if (!token && req.headers.authorization && req.headers.authorization.startsWith('Bearer')) {
+        token = req.headers.authorization.split(' ')[1];
+    }
+    const refreshToken = req.cookies?.refreshToken || req.headers['x-refresh-token'];
+
+    if (token) {
+        try {
+            const decoded = decodeToken(token);
+            if (decoded?.id) {
+                const user = await User.findById(decoded.id);
+                if (user && user.status !== 'Inactive') {
+                    throw new AppError('You are already logged in with an active account. Please log out first before creating a new account.', 400);
+                }
+            }
+        } catch (err) {
+            if (err instanceof AppError) throw err;
+        }
+    }
+
+    if (refreshToken) {
+        try {
+            const decodedRefresh = jwt.verify(refreshToken, process.env.JWT_SECRET);
+            const userId = decodedRefresh.userId || decodedRefresh.id;
+            if (userId) {
+                const user = await User.findById(userId);
+                if (user && user.status !== 'Inactive') {
+                    throw new AppError('You are already logged in with an active account. Please log out first before creating a new account.', 400);
+                }
+            }
+        } catch (err) {
+            if (err instanceof AppError) throw err;
+        }
+    }
+
+    next();
+});
+
+export const requireGuest = disallowAuthenticated;

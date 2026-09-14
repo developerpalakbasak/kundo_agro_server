@@ -11,13 +11,11 @@ import cookieParser from 'cookie-parser';
 // Routes
 import authRoutes from './routes/auth.route.js';
 import customerRoutes from './routes/customer.route.js';
-import userRoutes from './routes/user.route.js';
 import sellerRoutes from './routes/seller.route.js';
 import productRoutes from './routes/product.route.js';
 import blogRoutes from './routes/blog.route.js';
 import orderRoutes from './routes/order.route.js';
 import adminRoutes from './routes/admin/index.js';
-import adminUserRoutes from './routes/admin/user.route.js';
 
 // demo routes
 import demoRoutes from "./demo/demoRoutes.js";
@@ -84,12 +82,8 @@ app.use('/api/v1/orders', orderRoutes);
 
 // 3. Role-Based Routes (Matching User Model Roles: Customer, Seller, Admin)
 app.use('/api/v1/customer', customerRoutes);
-app.use('/api/v1/user', userRoutes); // Alias for compatibility with existing customer routes
 app.use('/api/v1/seller', sellerRoutes);
 app.use('/api/v1/admin', adminRoutes);
-
-// 4. Backward Compatibility Aliases
-app.use('/api/v1/users', adminUserRoutes);
 
 // Error Handler Middleware
 app.use(errorHandler);

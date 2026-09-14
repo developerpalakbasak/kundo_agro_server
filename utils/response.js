@@ -44,6 +44,7 @@ export const setAuthCookies = (
             status: user.status,
             phone: user.phone || '',
             avatar: user.avatar || null,
+            isVerifiedSeller: user.isVerifiedSeller ?? false,
         };
     }
 
