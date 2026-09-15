@@ -1,5 +1,6 @@
 import mongoose from 'mongoose';
 import Order from '../model/order.model.js';
+import Product from '../model/product.model.js';
 import AppError from '../utils/appError.js';
 import catchAsync from '../utils/catchAsync.js';
 import SSLCommerzPayment from 'sslcommerz-lts';
@@ -50,34 +51,56 @@ export const createOrder = catchAsync(async (req, res) => {
         throw new AppError('Order must contain at least one item.', 400);
     }
 
-    // Format & validate each item
+    // Validate each item has a valid product identifier
+    for (const item of items) {
+        const prodId = item.product || item.productId || item._id;
+        if (!prodId || !mongoose.Types.ObjectId.isValid(prodId)) {
+            throw new AppError('Each item must contain a valid product ID.', 400);
+        }
+    }
+
+    // Fetch products from database to ensure genuine products and authoritative prices
+    const productIds = items.map((item) => item.product || item.productId || item._id);
+    const dbProducts = await Product.find({ _id: { $in: productIds } });
+    const productMap = new Map(dbProducts.map((p) => [p._id.toString(), p]));
+
+    // Format & validate each item using DB product data
     const formattedItems = [];
     let calculatedSubtotal = 0;
 
     for (const item of items) {
-        if (!item.name || !item.name.trim()) {
-            throw new AppError('Each item must have a valid name.', 400);
-        }
-        const itemPrice = Number(item.price);
-        const itemQty = Number(item.quantity) || 1;
+        const prodId = (item.product || item.productId || item._id).toString();
+        const dbProduct = productMap.get(prodId);
 
-        if (Number.isNaN(itemPrice) || itemPrice < 0) {
-            throw new AppError(`Invalid price for item: ${item.name}`, 400);
+        if (!dbProduct) {
+            throw new AppError(`Product not found: ${item.name || prodId}`, 404);
         }
+
+        if (dbProduct.isAvailable === false) {
+            throw new AppError(`Product "${dbProduct.name}" is currently unavailable.`, 400);
+        }
+
+        const itemQty = Number(item.quantity) || 1;
         if (Number.isNaN(itemQty) || itemQty <= 0) {
-            throw new AppError(`Invalid quantity for item: ${item.name}`, 400);
+            throw new AppError(`Invalid quantity for item: ${dbProduct.name}`, 400);
+        }
+
+        // Take price directly from the database record (ignoring any client payload price)
+        const itemPrice = Number(dbProduct.price);
+        if (Number.isNaN(itemPrice) || itemPrice < 0) {
+            throw new AppError(`Invalid price configured for product: ${dbProduct.name}`, 400);
         }
 
         const lineTotal = itemPrice * itemQty;
         calculatedSubtotal += lineTotal;
 
         formattedItems.push({
-            product: item.product && mongoose.Types.ObjectId.isValid(item.product) ? item.product : null,
-            name: item.name.trim(),
-            thumbnail: item.thumbnail || 'https://images.unsplash.com/photo-1544551763-46a013bb70d5?auto=format&fit=crop&w=400&q=80',
+            product: dbProduct._id,
+            name: dbProduct.name,
+            thumbnail: dbProduct.thumbnail || item.thumbnail || 'https://images.unsplash.com/photo-1544551763-46a013bb70d5?auto=format&fit=crop&w=400&q=80',
             price: itemPrice,
             quantity: itemQty,
-            unit: item.unit ? item.unit.trim() : 'piece',
+            unit: dbProduct.unit || item.unit || 'piece',
         });
     }
 
@@ -166,6 +189,9 @@ export const getAllOrdersAdmin = catchAsync(async (req, res) => {
     }
     if (paymentStatus) {
         filter.paymentStatus = paymentStatus;
+    } else {
+        // By default, exclude orders with failed payments (abandoned attempts)
+        filter.paymentStatus = { $ne: 'failed' };
     }
     if (search) {
         filter.$or = [
@@ -344,7 +370,7 @@ export const initSSLCommerzPayment = catchAsync(async (req, res) => {
         const sslcz = new SSLFactory(store_id, store_passwd, is_live);
         const apiResponse = await sslcz.init(data);
 
-        console.log('SSLCommerz Init API Response:', apiResponse);
+        // console.log('SSLCommerz Init API Response:', apiResponse);
 
         if (apiResponse?.GatewayPageURL) {
             return res.status(200).json({
@@ -370,7 +396,12 @@ export const initSSLCommerzPayment = catchAsync(async (req, res) => {
  * SSLCommerz: Success Callback (POST from SSLCommerz server)
  */
 export const handleSSLCommerzSuccess = catchAsync(async (req, res) => {
-    const { tran_id, val_id } = req.body;
+    const { tran_id, val_id, card_issuer } = req.body;
+
+    console.log("start=>>>>>>>>>>>>>>>>>>>>>>>>>>>")
+    console.log(req.body)
+    console.log("end=>>>>>>>>>>>>>>>>>>>>>>>>>>>")
+
 
     const store_id = process.env.STORE_ID || 'testbox';
     const store_passwd = process.env.STORE_PASSWORD || 'qwerty';
@@ -390,6 +421,7 @@ export const handleSSLCommerzSuccess = catchAsync(async (req, res) => {
     if (validationRes?.status === 'VALID' || validationRes?.status === 'VALIDATED') {
         order.paymentStatus = 'paid';
         order.status = 'processing';
+        order.paymentMethod = card_issuer || 'Online Payment';
         await order.save();
         return res.redirect(`${process.env.FRONTEND_URL || 'http://localhost:3000'}/orders?placed=${order.orderId}&payment=success`);
     } else {
@@ -403,9 +435,9 @@ export const handleSSLCommerzSuccess = catchAsync(async (req, res) => {
  * SSLCommerz: Fail Callback
  */
 export const handleSSLCommerzFail = catchAsync(async (req, res) => {
-    const { tran_id } = req.body;
+    const { tran_id, card_issuer } = req.body;
     if (tran_id) {
-        await Order.findOneAndUpdate({ orderId: tran_id }, { paymentStatus: 'failed' });
+        await Order.findOneAndUpdate({ orderId: tran_id }, { paymentStatus: 'failed', paymentMethod: card_issuer || 'Online Payment' });
     }
     return res.redirect(`${process.env.FRONTEND_URL || 'http://localhost:3000'}/orders?payment=failed`);
 });
@@ -414,9 +446,9 @@ export const handleSSLCommerzFail = catchAsync(async (req, res) => {
  * SSLCommerz: Cancel Callback
  */
 export const handleSSLCommerzCancel = catchAsync(async (req, res) => {
-    const { tran_id } = req.body;
+    const { tran_id, card_issuer } = req.body;
     if (tran_id) {
-        await Order.findOneAndUpdate({ orderId: tran_id }, { paymentStatus: 'failed' });
+        await Order.findOneAndUpdate({ orderId: tran_id }, { paymentStatus: 'failed', paymentMethod: card_issuer || 'Online Payment' });
     }
     return res.redirect(`${process.env.FRONTEND_URL || 'http://localhost:3000'}/orders?payment=cancelled`);
 });
