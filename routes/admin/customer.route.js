@@ -7,7 +7,7 @@ import {
     deleteUser,
     changeUserPasswordByAdmin,
     approveSeller,
-} from '../../controllers/customer.controller.js';
+} from '../../controllers/admin.controller.js';
 import { isAuthenticated, isAdmin } from '../../middleware/auth.middleware.js';
 
 const router = express.Router();

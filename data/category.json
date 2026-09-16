@@ -19,5 +19,12 @@
         "description": "",
         "product_count": 0,
         "subcategories": []
+    },
+    {
+        "name": "asdfasdfs",
+        "slug": "asdfasdfs",
+        "description": "",
+        "product_count": 0,
+        "subcategories": []
     }
 ]

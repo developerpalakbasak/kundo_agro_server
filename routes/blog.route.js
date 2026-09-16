@@ -1,12 +1,14 @@
 import express from 'express';
 import {
-    createBlog,
     getAllBlogs,
     getBlogTags,
     getBlogByIdOrSlug,
+} from '../controllers/blog.controller.js';
+import {
+    createBlog,
     updateBlog,
     deleteBlog,
-} from '../controllers/blog.controller.js';
+} from '../controllers/admin.controller.js';
 import { isAuthenticated, isSellerOrAbove, isAdmin } from '../middleware/auth.middleware.js';
 import { uploadBlogMedia } from '../middleware/upload.middleware.js';
 

@@ -4,7 +4,7 @@ import {
     getAdminOrderById,
     updateOrderStatus,
     deleteOrder,
-} from '../../controllers/order.controller.js';
+} from '../../controllers/admin.controller.js';
 import { isAuthenticated, isSellerOrAbove, isAdmin } from '../../middleware/auth.middleware.js';
 
 const router = express.Router();

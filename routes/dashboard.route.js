@@ -1,5 +1,5 @@
 import express from 'express';
-import { getDashboardStats } from '../controllers/dashboard.controller.js';
+import { getDashboardStats } from '../controllers/admin.controller.js';
 import { isAuthenticated, isSellerOrAbove } from '../middleware/auth.middleware.js';
 
 const router = express.Router();

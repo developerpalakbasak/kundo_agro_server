@@ -1,16 +1,16 @@
 import express from 'express';
 import {
-    createProduct,
     getAllProducts,
     getProductByIdOrSlug,
-    updateProduct,
-    deleteProduct,
 } from '../../controllers/product.controller.js';
 import {
+    createProduct,
+    updateProduct,
+    deleteProduct,
     createCategory,
     updateCategory,
     deleteCategory,
-} from '../../controllers/category.controller.js';
+} from '../../controllers/admin.controller.js';
 import { isAuthenticated, isSellerOrAbove, isAdmin } from '../../middleware/auth.middleware.js';
 import { uploadProductThumbnail } from '../../middleware/upload.middleware.js';
 

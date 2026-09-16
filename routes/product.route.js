@@ -1,22 +1,26 @@
 import express from 'express';
 import {
-    createProduct,
     createFishSeedProduct,
     getAllProducts,
     getProductByIdOrSlug,
+    getAllDistricts,
+    getAllUnits,
+} from '../controllers/product.controller.js';
+import {
+    createProduct,
     updateProduct,
     deleteProduct,
-} from '../controllers/product.controller.js';
+} from '../controllers/admin.controller.js';
 import { isAuthenticated, isSellerOrAbove, isAdmin, optionalAuth } from '../middleware/auth.middleware.js';
 import { uploadProductThumbnail } from '../middleware/upload.middleware.js';
-import { getAllCategories } from '../controllers/category.controller.js';
-import { getAllDistricts, getAllUnits } from '../controllers/product.controller.js';
+import { getAllCategories, createCategory } from '../controllers/category.controller.js';
 
 const router = express.Router();
 
 // Public Routes
 router.get('/', getAllProducts);
 router.get('/categories', getAllCategories);
+router.post('/categories', isAuthenticated, createCategory);
 router.get('/districts', getAllDistricts);
 router.get('/units', getAllUnits);
 router.get('/:idOrSlug', getProductByIdOrSlug);
