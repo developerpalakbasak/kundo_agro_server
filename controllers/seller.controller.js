@@ -299,6 +299,7 @@ export const createSellerProduct = catchAsync(async (req, res) => {
         video,
         location,
         sellerDistrict, // Fallback compatibility
+        productFor,
     } = req.body;
 
     if (!name || !name.trim()) {
@@ -306,6 +307,9 @@ export const createSellerProduct = catchAsync(async (req, res) => {
     }
     if (name.trim().length > 120) {
         throw new AppError('Product name must be 120 characters or fewer.', 400);
+    }
+    if (!productFor || !['fish', 'animale'].includes(productFor.trim())) {
+        throw new AppError('Valid product type (fish or animale) is required.', 400);
     }
     if (!description || !description.trim()) {
         throw new AppError('Product description is required.', 400);
@@ -366,6 +370,7 @@ export const createSellerProduct = catchAsync(async (req, res) => {
         category: category.trim(),
         unit: unit.trim(),
         price: numericPrice,
+        productFor: productFor.trim(),
         compareAtPrice: numericComparePrice,
         thumbnail,
         video: video ? video.trim() : null,
@@ -423,6 +428,7 @@ export const updateSellerProduct = catchAsync(async (req, res) => {
         video,
         location,
         sellerDistrict,
+        productFor,
     } = req.body;
 
     // Handle thumbnail replacement
@@ -451,6 +457,13 @@ export const updateSellerProduct = catchAsync(async (req, res) => {
     if (category !== undefined) product.category = category.trim();
     if (unit !== undefined) product.unit = unit.trim();
     if (video !== undefined) product.video = video ? video.trim() : null;
+    
+    if (productFor !== undefined) {
+        if (!['fish', 'animale'].includes(productFor.trim())) {
+            throw new AppError('Valid product type (fish or animale) is required.', 400);
+        }
+        product.productFor = productFor.trim();
+    }
 
     if (location !== undefined) {
         product.location = location ? location.trim() : null;
@@ -578,7 +591,7 @@ export const createSellerAccount = catchAsync(async (req, res) => {
         }
     }
 
-    const { name, email, password, phone, avatar, status } = req.body;
+    const { name, email, password, phone, avatar, status, sellerFor } = req.body;
 
     if (!name || !name.trim()) {
         throw new AppError('Full name is required', 400);
@@ -608,6 +621,7 @@ export const createSellerAccount = catchAsync(async (req, res) => {
         status: status || 'Active',
         phone: phone ? phone.trim() : '',
         avatar: avatar || null,
+        sellerFor,
     });
 
     const accessToken = generateAccessToken(user);

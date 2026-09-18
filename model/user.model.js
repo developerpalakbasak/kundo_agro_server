@@ -60,6 +60,12 @@ const userSchema = new Schema(
       default: false,
       index: true,
     },
+    sellerFor: {
+      type: String,
+      required: [true, "Seller for is required"],
+      enum: ["fish", "animale"],
+      index: true,
+    },
   },
   {
     timestamps: true,

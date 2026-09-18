@@ -101,7 +101,7 @@ export const registerUser = catchAsync(async (req, res) => {
  * Login user via email or phone and password
  */
 export const login = catchAsync(async (req, res) => {
-    const { email, password, identifier, userId, phone } = req.body;
+    const { email, password, identifier, userId, phone, sellerFor } = req.body;
     const loginIdentifier = (email || identifier || userId || phone || '').toString().trim();
 
     if (!loginIdentifier || !password) {
@@ -127,6 +127,14 @@ export const login = catchAsync(async (req, res) => {
     const isMatch = await user.comparePassword(password.toString());
     if (!isMatch) {
         throw new AppError('Invalid email/phone or password', 401);
+    }
+
+    if (sellerFor && user.role === 'Seller') {
+        if (user.sellerFor && user.sellerFor !== sellerFor) {
+            const currentPortal = user.sellerFor === 'animale' ? 'Cattle' : 'Fish Seed';
+            const attemptedPortal = sellerFor === 'animale' ? 'Cattle' : 'Fish Seed';
+            throw new AppError(`You are registered as a ${currentPortal} seller. You cannot login to the ${attemptedPortal} portal.`, 403);
+        }
     }
 
     const accessToken = generateAccessToken(user);

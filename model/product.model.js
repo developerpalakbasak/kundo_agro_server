@@ -79,6 +79,11 @@ const productSchema = new Schema(
       type: Boolean,
       default: true,
     },
+    productFor: {
+      type: String,
+      enum: ["fish", "animale"],
+      required: [true, "Product for is required"],
+    },
   },
   {
     timestamps: true,
