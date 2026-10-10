@@ -38,6 +38,7 @@ const errorHandler = (err, req, res, next) => {
     else if (err.isOperational) {
         statusCode = err.statusCode;
         message = err.message;
+        console.warn(`⚠️ Client Request Error (${statusCode}):`, err.message);
     }
 
 /* 

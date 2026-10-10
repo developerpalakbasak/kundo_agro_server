@@ -62,8 +62,17 @@ const userSchema = new Schema(
     },
     sellerFor: {
       type: String,
-      required: [true, "Seller for is required"],
-      enum: ["fish", "animale"],
+      required: [
+        function () {
+          return this.role === "Seller";
+        },
+        "Seller for is required for sellers",
+      ],
+      enum: {
+        values: ["fish", "animale", null],
+        message: "{VALUE} is not a valid seller portal",
+      },
+      default: null,
       index: true,
     },
   },
