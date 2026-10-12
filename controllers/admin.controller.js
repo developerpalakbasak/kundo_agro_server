@@ -561,13 +561,31 @@ export const getAllOrdersAdmin = catchAsync(async (req, res) => {
         // By default, exclude orders with failed payments (abandoned attempts)
         filter.paymentStatus = { $ne: 'failed' };
     }
-    if (search) {
-        filter.$or = [
-            { orderId: { $regex: search, $options: 'i' } },
-            { customerName: { $regex: search, $options: 'i' } },
-            { phone: { $regex: search, $options: 'i' } },
-            { city: { $regex: search, $options: 'i' } },
+    if (search && search.trim()) {
+        const cleanSearch = search.trim().replace(/^#/, '');
+        const orConditions = [
+            { orderId: { $regex: cleanSearch, $options: 'i' } },
+            { customerName: { $regex: cleanSearch, $options: 'i' } },
+            { phone: { $regex: cleanSearch, $options: 'i' } },
+            { city: { $regex: cleanSearch, $options: 'i' } },
         ];
+
+        if (mongoose.Types.ObjectId.isValid(cleanSearch)) {
+            orConditions.push({ _id: new mongoose.Types.ObjectId(cleanSearch) });
+        } else if (/^[0-9a-fA-F]{4,24}$/.test(cleanSearch)) {
+            // Regex match against string converted _id so short hashes like 354a1a match
+            orConditions.push({
+                $expr: {
+                    $regexMatch: {
+                        input: { $toString: '$_id' },
+                        regex: cleanSearch,
+                        options: 'i',
+                    },
+                },
+            });
+        }
+
+        filter.$or = orConditions;
     }
 
     const pageNum = Math.max(1, parseInt(page, 10) || 1);

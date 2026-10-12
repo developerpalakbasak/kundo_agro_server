@@ -191,32 +191,39 @@ export const initSSLCommerzPayment = catchAsync(async (req, res) => {
         throw new AppError('Order not found.', 404);
     }
 
+    if (order.paymentStatus === 'paid') {
+        throw new AppError('This order has already been paid.', 400);
+    }
+
     const store_id = process.env.STORE_ID || 'testbox';
     const store_passwd = process.env.STORE_PASSWORD || 'qwerty';
     const is_live = process.env.IS_LIVE === 'true';
 
+    // Base backend server URL fallback
+    const backendBase = process.env.BACKEND_URL || `http://localhost:${process.env.PORT || 4000}`;
+
     const data = {
-        total_amount: order.total,
+        total_amount: Number(order.total),
         currency: 'BDT',
         tran_id: order.orderId,
-        success_url: process.env.SSL_SUCCESS_URL || `http://localhost:4000/api/v1/orders/payment/success`,
-        fail_url: process.env.SSL_FAIL_URL || `http://localhost:4000/api/v1/orders/payment/fail`,
-        cancel_url: process.env.SSL_CANCEL_URL || `http://localhost:4000/api/v1/orders/payment/cancel`,
-        ipn_url: process.env.SSL_IPN_URL || `http://localhost:4000/api/v1/orders/payment/ipn`,
+        success_url: process.env.SSL_SUCCESS_URL || `${backendBase}/api/v1/orders/payment/success`,
+        fail_url: process.env.SSL_FAIL_URL || `${backendBase}/api/v1/orders/payment/fail`,
+        cancel_url: process.env.SSL_CANCEL_URL || `${backendBase}/api/v1/orders/payment/cancel`,
+        ipn_url: process.env.SSL_IPN_URL || `${backendBase}/api/v1/orders/payment/ipn`,
         shipping_method: 'Courier',
-        product_name: order.items.map(i => i.name).join(', ') || 'Agro Products',
+        product_name: order.items.map((i) => i.name).slice(0, 5).join(', ') || 'Agro Products',
         product_category: 'Agro & Fisheries',
         product_profile: 'general',
-        cus_name: order.customerName,
-        cus_email: 'customer@kunduagro.com',
-        cus_add1: order.address,
-        cus_city: order.city,
+        cus_name: order.customerName || 'Customer',
+        cus_email: (order.customer && order.customer.email) || 'customer@kunduagro.com',
+        cus_add1: order.address || 'Bangladesh',
+        cus_city: order.city || 'Dhaka',
         cus_postcode: '1000',
         cus_country: 'Bangladesh',
-        cus_phone: order.phone,
-        ship_name: order.customerName,
-        ship_add1: order.address,
-        ship_city: order.city,
+        cus_phone: order.phone || '01700000000',
+        ship_name: order.customerName || 'Customer',
+        ship_add1: order.address || 'Bangladesh',
+        ship_city: order.city || 'Dhaka',
         ship_postcode: 1000,
         ship_country: 'Bangladesh',
     };
@@ -226,15 +233,15 @@ export const initSSLCommerzPayment = catchAsync(async (req, res) => {
         const sslcz = new SSLFactory(store_id, store_passwd, is_live);
         const apiResponse = await sslcz.init(data);
 
-        // console.log('SSLCommerz Init API Response:', apiResponse);
-
         if (apiResponse?.GatewayPageURL) {
             return res.status(200).json({
                 success: true,
                 gatewayUrl: apiResponse.GatewayPageURL,
+                sessionKey: apiResponse.sessionkey,
             });
         }
-        
+
+        console.error('SSLCommerz Init Failed:', apiResponse);
         return res.status(400).json({
             success: false,
             message: apiResponse?.failedreason || 'SSLCommerz gateway session failed to initialize.',
@@ -252,38 +259,75 @@ export const initSSLCommerzPayment = catchAsync(async (req, res) => {
  * SSLCommerz: Success Callback (POST from SSLCommerz server)
  */
 export const handleSSLCommerzSuccess = catchAsync(async (req, res) => {
-    const { tran_id, val_id, card_issuer } = req.body;
+    const { tran_id, val_id, card_issuer, card_brand, card_type, bank_tran_id, tran_date, amount } = req.body;
+    const frontendBase = process.env.FRONTEND_URL || 'http://localhost:3000';
 
-    console.log("start=>>>>>>>>>>>>>>>>>>>>>>>>>>>")
-    console.log(req.body)
-    console.log("end=>>>>>>>>>>>>>>>>>>>>>>>>>>>")
+    if (!tran_id || !val_id) {
+        console.error('SSLCommerz callback missing tran_id or val_id:', req.body);
+        return res.redirect(`${frontendBase}/orders?payment=failed&reason=invalid_params`);
+    }
 
+    const order = await Order.findOne({ orderId: tran_id });
+    if (!order) {
+        console.error(`SSLCommerz order not found for tran_id: ${tran_id}`);
+        return res.redirect(`${frontendBase}/orders?payment=failed&reason=ordernotfound`);
+    }
+
+    // Already paid (e.g. verified via IPN first)
+    if (order.paymentStatus === 'paid') {
+        return res.redirect(`${frontendBase}/orders?placed=${order.orderId}&payment=success`);
+    }
 
     const store_id = process.env.STORE_ID || 'testbox';
     const store_passwd = process.env.STORE_PASSWORD || 'qwerty';
     const is_live = process.env.IS_LIVE === 'true';
 
-    const order = await Order.findOne({ orderId: tran_id });
-    if (!order) {
-        return res.redirect(`${process.env.FRONTEND_URL || 'http://localhost:3000'}/orders?payment=failed&reason=ordernotfound`);
-    }
+    try {
+        // Validate payment with SSLCommerz server
+        const SSLFactory = SSLCommerzPayment.SSLCommerzPayment || SSLCommerzPayment.default || SSLCommerzPayment;
+        const sslcz = new SSLFactory(store_id, store_passwd, is_live);
+        const validationRes = await sslcz.validate({ val_id });
 
-    // Validate payment with SSLCommerz
-    const SSLFactory = SSLCommerzPayment.SSLCommerzPayment || SSLCommerzPayment.default || SSLCommerzPayment;
-    const sslcz = new SSLFactory(store_id, store_passwd, is_live);
-    const validationData = { val_id };
-    const validationRes = await sslcz.validate(validationData);
+        const isValidStatus = validationRes?.status === 'VALID' || validationRes?.status === 'VALIDATED';
+        const paidAmount = Number(validationRes?.currency_amount || validationRes?.amount || amount || 0);
+        const isAmountMatching = Math.abs(paidAmount - Number(order.total)) < 1.0; // allow fractional rounding tolerance
 
-    if (validationRes?.status === 'VALID' || validationRes?.status === 'VALIDATED') {
-        order.paymentStatus = 'paid';
-        order.status = 'processing';
-        order.paymentMethod = card_issuer || 'Online Payment';
-        await order.save();
-        return res.redirect(`${process.env.FRONTEND_URL || 'http://localhost:3000'}/orders?placed=${order.orderId}&payment=success`);
-    } else {
+        if (isValidStatus && isAmountMatching) {
+            order.paymentStatus = 'paid';
+            order.status = 'processing';
+            order.paymentMethod = card_issuer || card_brand || 'Online Payment';
+            order.paymentDetails = {
+                val_id,
+                bank_tran_id: bank_tran_id || validationRes?.bank_tran_id || null,
+                card_type: card_type || validationRes?.card_type || null,
+                card_brand: card_brand || validationRes?.card_brand || null,
+                card_issuer: card_issuer || validationRes?.card_issuer || null,
+                tran_date: tran_date || validationRes?.tran_date || new Date().toISOString(),
+                amount_paid: paidAmount,
+                gateway_status: validationRes?.status,
+            };
+            await order.save();
+            return res.redirect(`${frontendBase}/orders?placed=${order.orderId}&payment=success`);
+        } else {
+            console.error('SSLCommerz Payment Validation Discrepancy:', {
+                status: validationRes?.status,
+                paidAmount,
+                orderTotal: order.total,
+                response: validationRes,
+            });
+            order.paymentStatus = 'failed';
+            order.paymentDetails = {
+                val_id,
+                gateway_status: validationRes?.status || 'INVALID',
+            };
+            await order.save();
+            return res.redirect(`${frontendBase}/orders?placed=${order.orderId}&payment=failed&reason=validation_mismatch`);
+        }
+    } catch (validateErr) {
+        console.error('SSLCommerz validation error:', validateErr);
         order.paymentStatus = 'failed';
         await order.save();
-        return res.redirect(`${process.env.FRONTEND_URL || 'http://localhost:3000'}/orders?placed=${order.orderId}&payment=failed`);
+        return res.redirect(`${frontendBase}/orders?placed=${order.orderId}&payment=failed`);
     }
 });
 
@@ -291,11 +335,21 @@ export const handleSSLCommerzSuccess = catchAsync(async (req, res) => {
  * SSLCommerz: Fail Callback
  */
 export const handleSSLCommerzFail = catchAsync(async (req, res) => {
-    const { tran_id, card_issuer } = req.body;
+    const { tran_id, card_issuer, error } = req.body;
+    const frontendBase = process.env.FRONTEND_URL || 'http://localhost:3000';
+
     if (tran_id) {
-        await Order.findOneAndUpdate({ orderId: tran_id }, { paymentStatus: 'failed', paymentMethod: card_issuer || 'Online Payment' });
+        await Order.findOneAndUpdate(
+            { orderId: tran_id },
+            {
+                paymentStatus: 'failed',
+                paymentMethod: card_issuer || 'Online Payment',
+                'paymentDetails.gateway_status': 'FAILED',
+            }
+        );
+        return res.redirect(`${frontendBase}/orders?placed=${tran_id}&payment=failed`);
     }
-    return res.redirect(`${process.env.FRONTEND_URL || 'http://localhost:3000'}/orders?payment=failed`);
+    return res.redirect(`${frontendBase}/orders?payment=failed`);
 });
 
 /**
@@ -303,20 +357,71 @@ export const handleSSLCommerzFail = catchAsync(async (req, res) => {
  */
 export const handleSSLCommerzCancel = catchAsync(async (req, res) => {
     const { tran_id, card_issuer } = req.body;
+    const frontendBase = process.env.FRONTEND_URL || 'http://localhost:3000';
+
     if (tran_id) {
-        await Order.findOneAndUpdate({ orderId: tran_id }, { paymentStatus: 'failed', paymentMethod: card_issuer || 'Online Payment' });
+        await Order.findOneAndUpdate(
+            { orderId: tran_id },
+            {
+                paymentStatus: 'failed',
+                paymentMethod: card_issuer || 'Online Payment',
+                'paymentDetails.gateway_status': 'CANCELLED',
+            }
+        );
+        return res.redirect(`${frontendBase}/orders?placed=${tran_id}&payment=cancelled`);
     }
-    return res.redirect(`${process.env.FRONTEND_URL || 'http://localhost:3000'}/orders?payment=cancelled`);
+    return res.redirect(`${frontendBase}/orders?payment=cancelled`);
 });
 
 /**
  * SSLCommerz: IPN Notification Handler
  */
 export const handleSSLCommerzIPN = catchAsync(async (req, res) => {
-    const { tran_id, status } = req.body;
-    if (tran_id && (status === 'VALID' || status === 'VALIDATED')) {
-        await Order.findOneAndUpdate({ orderId: tran_id }, { paymentStatus: 'paid', status: 'processing' });
+    const { tran_id, val_id, status } = req.body;
+
+    if (!tran_id || !val_id) {
+        return res.status(400).send('Missing tran_id or val_id');
     }
-    res.status(200).send('IPN Received');
+
+    const store_id = process.env.STORE_ID || 'testbox';
+    const store_passwd = process.env.STORE_PASSWORD || 'qwerty';
+    const is_live = process.env.IS_LIVE === 'true';
+
+    try {
+        const order = await Order.findOne({ orderId: tran_id });
+        if (!order) {
+            return res.status(404).send('Order not found');
+        }
+
+        if (order.paymentStatus === 'paid') {
+            return res.status(200).send('Already Paid');
+        }
+
+        const SSLFactory = SSLCommerzPayment.SSLCommerzPayment || SSLCommerzPayment.default || SSLCommerzPayment;
+        const sslcz = new SSLFactory(store_id, store_passwd, is_live);
+        const validationRes = await sslcz.validate({ val_id });
+
+        if (validationRes?.status === 'VALID' || validationRes?.status === 'VALIDATED') {
+            order.paymentStatus = 'paid';
+            order.status = 'processing';
+            order.paymentDetails = {
+                val_id,
+                bank_tran_id: validationRes?.bank_tran_id || null,
+                card_type: validationRes?.card_type || null,
+                card_brand: validationRes?.card_brand || null,
+                card_issuer: validationRes?.card_issuer || null,
+                tran_date: validationRes?.tran_date || new Date().toISOString(),
+                amount_paid: Number(validationRes?.currency_amount || validationRes?.amount || 0),
+                gateway_status: validationRes?.status,
+            };
+            await order.save();
+            return res.status(200).send('IPN Validated & Order Updated');
+        }
+
+        return res.status(400).send('IPN Validation Failed');
+    } catch (error) {
+        console.error('IPN processing error:', error);
+        return res.status(500).send('IPN Server Error');
+    }
 });
 

@@ -93,6 +93,16 @@ const orderSchema = new Schema(
       default: 'pending',
       index: true,
     },
+    paymentDetails: {
+      val_id: { type: String, default: null },
+      bank_tran_id: { type: String, default: null },
+      card_type: { type: String, default: null },
+      card_brand: { type: String, default: null },
+      card_issuer: { type: String, default: null },
+      tran_date: { type: String, default: null },
+      amount_paid: { type: Number, default: 0 },
+      gateway_status: { type: String, default: null },
+    },
     status: {
       type: String,
       enum: {
