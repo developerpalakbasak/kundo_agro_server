@@ -102,6 +102,11 @@ const orderSchema = new Schema(
       tran_date: { type: String, default: null },
       amount_paid: { type: Number, default: 0 },
       gateway_status: { type: String, default: null },
+      // Manual verification fields
+      senderNumber: { type: String, default: null, trim: true },
+      transactionId: { type: String, default: null, trim: true },
+      bankName: { type: String, default: null, trim: true },
+      depositReference: { type: String, default: null, trim: true },
     },
     status: {
       type: String,

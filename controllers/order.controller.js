@@ -33,6 +33,11 @@ export const createOrder = catchAsync(async (req, res) => {
         paymentMethod,
         items,
         deliveryFee = 0,
+        senderNumber,
+        transactionId,
+        bankName,
+        depositReference,
+        paymentDetails: incomingPaymentDetails,
     } = req.body;
 
     if (!customerName || !customerName.trim()) {
@@ -118,6 +123,12 @@ export const createOrder = catchAsync(async (req, res) => {
         notes: notes ? notes.trim() : '',
         paymentMethod: paymentMethod ? paymentMethod.trim() : 'Cash on Delivery',
         paymentStatus: 'pending',
+        paymentDetails: {
+            senderNumber: senderNumber?.trim() || incomingPaymentDetails?.senderNumber?.trim() || null,
+            transactionId: transactionId?.trim() || incomingPaymentDetails?.transactionId?.trim() || null,
+            bankName: bankName?.trim() || incomingPaymentDetails?.bankName?.trim() || null,
+            depositReference: depositReference?.trim() || incomingPaymentDetails?.depositReference?.trim() || null,
+        },
         status: 'processing',
         items: formattedItems,
         subtotal: calculatedSubtotal,
